@@ -93,3 +93,10 @@ class ChessBoard:
             else:
                 snapshot[position] = None
         return snapshot
+    
+    def get_square_color(self, position):
+        """Determine the color of a square based on its position."""
+        file = position[0]
+        rank = int(position[1])
+        file_index = FILES.index(file)
+        return COLOR["white"] if (file_index + rank) % 2 == 0 else COLOR["black"]

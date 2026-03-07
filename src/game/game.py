@@ -79,13 +79,13 @@ class Game:
         # Check for check, checkmate, and stalemate
 
         self.log_position()  # Log the current position for threefold repetition detection
+        self.halfmove_clock = self.halfmove_clock + 1 if piece.type != "P" and captured_piece is None else 0
         if self.check_threefold_repetition():
             self.game_over = True
             self.is_draw = True
             self.draw_reason = "Threefold repetition"
             print("Draw by threefold repetition.")
-
-        if self.enable_fifty_move_rule and self.halfmove_clock >= 100:
+        elif self.enable_fifty_move_rule and self.halfmove_clock >= 100:
             self.game_over = True
             self.is_draw = True
             self.draw_reason = "Fifty-move rule"
@@ -112,8 +112,10 @@ class Game:
                 
         if not self.game_over:
             self.switch_turn()
-            self.halfmove_clock = self.halfmove_clock + 1 if piece.type != "P" and captured_piece is None else 0
-
+        elif self.game_over and self.is_draw:
+            print(f"The game ended in a draw due to {self.draw_reason}.")
+        elif self.game_over:
+            print(f"Game over. {self.current_turn} wins.")
 
 
     def switch_turn(self):
@@ -152,7 +154,6 @@ class Game:
         self.is_draw = False  
         self.draw_reason = None  
         self.halfmove_clock = 0  
-        self.enable_fifty_move_rule = self.enable_fifty_move_rule
         self.position_history = []
         self.last_move = None  
 
