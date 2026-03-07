@@ -1,6 +1,7 @@
 from .board import ChessBoard
 from .standard_chess_rules import StandardChessRules
 from utils.constants import COLOR
+from game.piece import Queen, Rook, Bishop, Knight
 
 class Game:
     def __init__(self):
@@ -16,7 +17,7 @@ class Game:
                                 # "captured_piece": captured_piece if captured_piece else None,
                                 # "was_two_square_pawn_move": was_two_square_pawn_move
 
-    def make_move(self, from_position, to_position):
+    def make_move(self, from_position, to_position, promotion_choice=None):
         """Make a move on the board if it's valid."""
         castled = False
         en_passant = False
@@ -64,6 +65,12 @@ class Game:
 
         self._record_last_move(piece, from_position, to_position, captured_piece, piece.type == "P" and abs(int(from_position[1]) - int(to_position[1])) == 2)
 
+        # Handle pawn promotion
+        if piece.type == "P":
+            promotion_rank = 8 if piece.color == COLOR["white"] else 1
+            if int(to_position[1]) == promotion_rank:
+                self.promotion(to_position, promotion_choice)
+
         if self.in_check(self.opponent_color()):
             if self.checkmate(self.opponent_color()):
                 self.game_over = True
@@ -89,7 +96,7 @@ class Game:
         king_pos = self.find_king(color)
         for position, piece in self.board.board.items():
             if piece and piece.color == self.opponent_color(color):
-                if self.rules.is_valid_move(position, king_pos):
+                if self.rules.is_valid_move(position, king_pos, self.last_move):
                     return True
         return False
     
@@ -226,10 +233,10 @@ class Game:
         """Check if a specific square is under attack by the specified color."""
         for from_position, piece in self.board.board.items():
             if piece and piece.color == attacking_color:
-                if self.rules.is_valid_move(from_position, position):
+                if self.rules.is_valid_move(from_position, position, self.last_move):
                     return True
                 elif piece.type == "P":  # Special case for pawn attacks
-                    if self.rules.is_valid_pawn_attack(piece, from_position, position):
+                    if self.rules.is_valid_pawn_attack(piece, from_position, position, self.last_move):
                         return True
         return False
     
@@ -270,3 +277,29 @@ class Game:
     def _record_last_move(self, piece, from_position, to_position, captured_piece = None, was_two_square_pawn_move = False):
         """Store the last move in the game state."""
         self.last_move = self._build_last_move(piece, from_position, to_position, captured_piece, was_two_square_pawn_move)
+
+    def promotion(self, pawn_position, new_piece_type = "Q"):
+        """Promote a pawn to a new piece type."""
+        pawn = self.board.get_piece_at(pawn_position)
+        if not pawn or pawn.type != "P":
+            raise ValueError(f"No pawn at position {pawn_position} to promote.")
+        
+        rank = int(pawn_position[1])
+        if (pawn.color == COLOR["white"] and rank != 8) or (pawn.color == COLOR["black"] and rank != 1):
+            raise ValueError(f"Pawn at position {pawn_position} is not in the promotion rank.")
+        
+        # Create the new piece based on the specified type
+        match new_piece_type:
+            case "Q":
+                new_piece = Queen(pawn.color, pawn_position)
+            case "R":
+                new_piece = Rook(pawn.color, pawn_position)
+            case "B":
+                new_piece = Bishop(pawn.color, pawn_position)
+            case "N":
+                new_piece = Knight(pawn.color, pawn_position)
+            case _:
+                raise ValueError(f"Invalid promotion piece type: {new_piece_type}. Must be 'Q', 'R', 'B', or 'N'.")
+        
+        # Replace the pawn with the new piece on the board
+        self.board.set_piece_at(pawn_position, new_piece)
