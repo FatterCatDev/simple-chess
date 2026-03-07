@@ -44,10 +44,97 @@ class TestStandardChessRules(unittest.TestCase):
     def test_castling_kingside_white(self):
         self.assertTrue(self.rules.is_valid_move("e1", "g1"))
 
-    @unittest.skip("TODO: Implement en passant logic")
-    def test_en_passant_white_capture(self):
-        # Placeholder for an en passant scenario once last-move tracking exists.
-        self.assertTrue(self.rules.is_valid_move("e5", "d6"))
+    def test_en_passant_white_capture_valid(self):
+        """Test white pawn can capture black pawn en passant."""
+        # Clear the board and set up en passant scenario
+        for pos in ["e2", "d7"]:
+            self.board.remove_piece_at(pos)
+        
+        # White pawn on e5, black pawn moves d7 to d5 (two squares)
+        from game.piece import Pawn
+        white_pawn = Pawn(COLOR["white"], "e5")
+        black_pawn = Pawn(COLOR["black"], "d5")
+        self.board.set_piece_at("e5", white_pawn)
+        self.board.set_piece_at("d5", black_pawn)
+        
+        # Build last_move for black pawn moving d7->d5
+        last_move = {
+            "piece_type": "P",
+            "piece_color": COLOR["black"],
+            "from": "d7",
+            "to": "d5",
+            "captured_piece": None,
+            "was_two_square_pawn_move": True
+        }
+        
+        # White pawn should be able to capture en passant to d6
+        self.assertTrue(self.rules.is_valid_move("e5", "d6", last_move))
+
+    def test_en_passant_black_capture_valid(self):
+        """Test black pawn can capture white pawn en passant."""
+        # Clear the board and set up en passant scenario
+        for pos in ["e7", "d2"]:
+            self.board.remove_piece_at(pos)
+        
+        # Black pawn on e4, white pawn moves d2 to d4 (two squares)
+        from game.piece import Pawn
+        black_pawn = Pawn(COLOR["black"], "e4")
+        white_pawn = Pawn(COLOR["white"], "d4")
+        self.board.set_piece_at("e4", black_pawn)
+        self.board.set_piece_at("d4", white_pawn)
+        
+        # Build last_move for white pawn moving d2->d4
+        last_move = {
+            "piece_type": "P",
+            "piece_color": COLOR["white"],
+            "from": "d2",
+            "to": "d4",
+            "captured_piece": None,
+            "was_two_square_pawn_move": True
+        }
+        
+        # Black pawn should be able to capture en passant to d3
+        self.assertTrue(self.rules.is_valid_move("e4", "d3", last_move))
+
+    def test_en_passant_not_valid_without_two_square_move(self):
+        """Test en passant is not valid if last move wasn't a two-square pawn advance."""
+        # Clear the board
+        for pos in ["e2", "d7"]:
+            self.board.remove_piece_at(pos)
+        
+        from game.piece import Pawn
+        white_pawn = Pawn(COLOR["white"], "e5")
+        black_pawn = Pawn(COLOR["black"], "d5")
+        self.board.set_piece_at("e5", white_pawn)
+        self.board.set_piece_at("d5", black_pawn)
+        
+        # Last move was NOT a two-square advance
+        last_move = {
+            "piece_type": "P",
+            "piece_color": COLOR["black"],
+            "from": "d6",
+            "to": "d5",
+            "captured_piece": None,
+            "was_two_square_pawn_move": False
+        }
+        
+        # Should not allow en passant
+        self.assertFalse(self.rules.is_valid_move("e5", "d6", last_move))
+
+    def test_en_passant_not_valid_without_last_move(self):
+        """Test en passant is not valid if no last move exists."""
+        # Clear the board
+        for pos in ["e2", "d7"]:
+            self.board.remove_piece_at(pos)
+        
+        from game.piece import Pawn
+        white_pawn = Pawn(COLOR["white"], "e5")
+        black_pawn = Pawn(COLOR["black"], "d5")
+        self.board.set_piece_at("e5", white_pawn)
+        self.board.set_piece_at("d5", black_pawn)
+        
+        # No last move
+        self.assertFalse(self.rules.is_valid_move("e5", "d6", None))
 
     @unittest.skip("TODO: Implement promotion handling")
     def test_pawn_promotion_trigger(self):

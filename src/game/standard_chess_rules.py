@@ -1,11 +1,11 @@
 from game.board import ChessBoard
-from utils.constants import FILES, RANKS, COLOR
+from utils.constants import FILES, RANKS, COLOR, PIECE_TYPES
 
 class StandardChessRules:
     def __init__(self, chess_board: ChessBoard):
         self.board = chess_board
 
-    def is_valid_move(self, from_position, to_position):
+    def is_valid_move(self, from_position, to_position, last_move=None):
         """Check if a move from one position to another is valid according to standard chess rules."""
         move_valid = False
         piece = self.board.get_piece_at(from_position)
@@ -15,7 +15,7 @@ class StandardChessRules:
         # Implement specific movement rules for each piece type
         match piece.type:
             case "P":
-                if self.is_valid_pawn_move(piece, from_position, to_position):
+                if self.is_valid_pawn_move(piece, from_position, to_position, last_move):
                     move_valid = True
             case "R":
                 if self.is_valid_rook_move(piece, from_position, to_position):
@@ -40,7 +40,7 @@ class StandardChessRules:
         return move_valid
     
     # Placeholder methods for specific piece movement rules
-    def is_valid_pawn_move(self, pawn, from_position, to_position):
+    def is_valid_pawn_move(self, pawn, from_position, to_position, last_move=None):
         if from_position[0] == to_position[0]:  # Same file
             if pawn.color == COLOR["white"] and self.board.get_piece_at(to_position) is None:
                 if from_position[1] == '2' and to_position[1] == '4' and self.board.get_piece_at(f"{from_position[0]}3") is None:
@@ -55,12 +55,14 @@ class StandardChessRules:
         elif abs(ord(from_position[0]) - ord(to_position[0])) == 1:  # Diagonal capture
             if pawn.color == COLOR["white"] and int(to_position[1]) - int(from_position[1]) == 1:
                 if self.board.is_position_occupied(to_position) and self.board.get_piece_at(to_position).color == COLOR["black"]:
-                        return True  # Capture move
-                # en passant capture for white pawns
+                    return True  # Capture move
+                elif self.is_en_passant_possible(pawn.position, to_position, last_move):
+                    return True  # En passant capture
             elif pawn.color == COLOR["black"] and int(from_position[1]) - int(to_position[1]) == 1:
                 if self.board.is_position_occupied(to_position) and self.board.get_piece_at(to_position).color == COLOR["white"]:
                     return True  # Capture move
-                # en passant capture for black pawns
+                elif self.is_en_passant_possible(pawn.position, to_position, last_move):
+                    return True  # En passant capture
         return False
 
     def is_valid_rook_move(self, rook, from_position, to_position):
@@ -142,3 +144,27 @@ class StandardChessRules:
             return (to_rank - from_rank == 1) and (abs(to_file - from_file) == 1)
         else:  # black pawn
             return (from_rank - to_rank == 1) and (abs(to_file - from_file) == 1)
+        
+    def is_en_passant_possible(self, pawn_position, to_position, last_move=None):
+        """Check if en passant is possible for a pawn at a given position."""
+        if not last_move:
+            return False
+        
+        last_move_to = last_move["to"]
+        # Check if the last move was a two-square pawn advance
+        if last_move["was_two_square_pawn_move"] is not True:
+            return False
+        
+        # Check if the pawn is adjacent to the last moved pawn
+        pawn_file = pawn_position[0]
+        pawn_rank = int(pawn_position[1])
+        last_move_file = last_move_to[0]
+        last_move_rank = int(last_move_to[1])
+        to_file = to_position[0]
+        to_rank = int(to_position[1])
+
+        if last_move_rank == pawn_rank and abs(ord(last_move_file) - ord(pawn_file)) == 1:
+            if to_file == last_move_file and ((pawn_rank == 5 and to_rank == 6) or (pawn_rank == 4 and to_rank == 3)):
+                return True
+        
+        return False

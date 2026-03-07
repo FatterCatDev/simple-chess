@@ -8,13 +8,18 @@ class Game:
         self.rules = StandardChessRules(self.board)
         self.current_turn = COLOR["white"]  # White starts first
         self.game_over = False
-        self.last_move = None  # Initialize last_move to None
-
-
+        self.last_move = None   # Initialize last_move to None
+                                # "piece_type": piece.type,
+                                # "piece_color": piece.color,
+                                # "from": from_position,
+                                # "to": to_position,
+                                # "captured_piece": captured_piece if captured_piece else None,
+                                # "was_two_square_pawn_move": was_two_square_pawn_move
 
     def make_move(self, from_position, to_position):
         """Make a move on the board if it's valid."""
         castled = False
+        en_passant = False
         if self.game_over:
             raise ValueError("The game is over. No more moves can be made.")
         
@@ -38,14 +43,24 @@ class Game:
             else:
                 raise ValueError(f"Invalid move from {from_position} to {to_position}.")
         else:
-            if not self.rules.is_valid_move(from_position, to_position):
+            if not self.rules.is_valid_move(from_position, to_position, self.last_move):
                 raise ValueError(f"Invalid move from {from_position} to {to_position}.")
+            
+            #check for en passant capture
+            if piece.type == "P" and self.last_move and self.last_move["was_two_square_pawn_move"]:
+                if self.rules.is_en_passant_possible(piece.position, to_position, self.last_move):
+                    en_passant = True
             
             if self.would_be_in_check_after_move(from_position, to_position):
                 raise ValueError(f"Move from {from_position} to {to_position} would put {self.current_turn} in check.")
         
         if not castled:
             self.board.move_piece(from_position, to_position)
+            if en_passant:
+                # Remove the captured pawn in en passant
+                captured_pawn_position = f"{to_position[0]}{from_position[1]}"
+                captured_piece = self.board.get_piece_at(captured_pawn_position)  # Update captured_piece for last_move record
+                self.board.remove_piece_at(captured_pawn_position)
 
         self._record_last_move(piece, from_position, to_position, captured_piece, piece.type == "P" and abs(int(from_position[1]) - int(to_position[1])) == 2)
 

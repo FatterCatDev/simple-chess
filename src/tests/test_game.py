@@ -438,5 +438,133 @@ class TestCastling(unittest.TestCase):
         self.assertIn(("e1", "g1"), moves)
 
 
+class TestEnPassantExecution(unittest.TestCase):
+    def setUp(self):
+        self.game = Game()
+
+    def _clear_board(self):
+        for square in self.game.board.board.keys():
+            self.game.board.remove_piece_at(square)
+
+    def test_white_en_passant_capture_removes_black_pawn(self):
+        """Test white en passant actually removes the black pawn from the board."""
+        self._clear_board()
+
+        from game.piece import Pawn, King
+        white_pawn = Pawn(COLOR["white"], "e5")
+        black_pawn = Pawn(COLOR["black"], "d7")
+        white_king = King(COLOR["white"], "e1")
+        black_king = King(COLOR["black"], "e8")
+
+        self.game.board.set_piece_at("e5", white_pawn)
+        self.game.board.set_piece_at("d7", black_pawn)
+        self.game.board.set_piece_at("e1", white_king)
+        self.game.board.set_piece_at("e8", black_king)
+
+        white_pawn.has_moved = True  # Mark as already moved to e5
+
+        # Black moves d7 -> d5 (two squares)
+        self.game.current_turn = COLOR["black"]
+        self.game.make_move("d7", "d5")
+
+        # Verify black pawn is on d5
+        self.assertIsNotNone(self.game.board.get_piece_at("d5"))
+        self.assertEqual(self.game.board.get_piece_at("d5").type, "P")
+        self.assertEqual(self.game.board.get_piece_at("d5").color, COLOR["black"])
+
+        # White captures en passant: e5 -> d6
+        self.game.make_move("e5", "d6")
+
+        # Verify white pawn is on d6
+        self.assertIsNotNone(self.game.board.get_piece_at("d6"))
+        self.assertEqual(self.game.board.get_piece_at("d6").type, "P")
+        self.assertEqual(self.game.board.get_piece_at("d6").color, COLOR["white"])
+
+        # Verify black pawn was removed from d5
+        self.assertIsNone(self.game.board.get_piece_at("d5"))
+
+        # Verify e5 is now empty
+        self.assertIsNone(self.game.board.get_piece_at("e5"))
+
+    def test_black_en_passant_capture_removes_white_pawn(self):
+        """Test black en passant actually removes the white pawn from the board."""
+        self._clear_board()
+
+        from game.piece import Pawn, King
+        black_pawn = Pawn(COLOR["black"], "e4")
+        white_pawn = Pawn(COLOR["white"], "d2")
+        white_king = King(COLOR["white"], "e1")
+        black_king = King(COLOR["black"], "e8")
+
+        self.game.board.set_piece_at("e4", black_pawn)
+        self.game.board.set_piece_at("d2", white_pawn)
+        self.game.board.set_piece_at("e1", white_king)
+        self.game.board.set_piece_at("e8", black_king)
+
+        black_pawn.has_moved = True  # Mark as already moved to e4
+
+        # White moves d2 -> d4 (two squares)
+        self.game.current_turn = COLOR["white"]
+        self.game.make_move("d2", "d4")
+
+        # Black captures en passant: e4 -> d3
+        self.game.make_move("e4", "d3")
+
+        # Verify black pawn is on d3
+        self.assertIsNotNone(self.game.board.get_piece_at("d3"))
+        self.assertEqual(self.game.board.get_piece_at("d3").type, "P")
+        self.assertEqual(self.game.board.get_piece_at("d3").color, COLOR["black"])
+
+        # Verify white pawn was removed from d4
+        self.assertIsNone(self.game.board.get_piece_at("d4"))
+
+    def test_en_passant_blocked_if_would_expose_king(self):
+        """Test that en passant is rejected if it would expose the king to check."""
+        self._clear_board()
+
+        from game.piece import Pawn, King, Rook
+        # White king on e5, white pawn on d5
+        # Black pawn on c7, black rook on a5 (attacking along rank 5)
+        white_king = King(COLOR["white"], "e5")
+        white_pawn = Pawn(COLOR["white"], "d5")
+        black_pawn = Pawn(COLOR["black"], "c7")
+        black_rook = Rook(COLOR["black"], "a5")
+        black_king = King(COLOR["black"], "e8")
+
+        self.game.board.set_piece_at("e5", white_king)
+        self.game.board.set_piece_at("d5", white_pawn)
+        self.game.board.set_piece_at("c7", black_pawn)
+        self.game.board.set_piece_at("a5", black_rook)
+        self.game.board.set_piece_at("e8", black_king)
+
+        white_pawn.has_moved = True
+
+        # Black moves c7 -> c5 (two squares)
+        self.game.current_turn = COLOR["black"]
+        self.game.make_move("c7", "c5")
+
+        # White tries en passant d5 -> c6, but this would expose king to rook on a5
+        self.game.current_turn = COLOR["white"]
+        
+        # Verify pawn is still blocking the rook
+        self.assertIsNotNone(self.game.board.get_piece_at("d5"))
+        self.assertIsNotNone(self.game.board.get_piece_at("c5"))
+        
+        # This move should be rejected
+        with self.assertRaises(ValueError) as context:
+            self.game.make_move("d5", "c6")
+        
+        self.assertIn("check", str(context.exception).lower())
+        
+        # Verify board state is unchanged - black pawn still on c5
+        self.assertIsNotNone(self.game.board.get_piece_at("c5"))
+        self.assertEqual(self.game.board.get_piece_at("c5").type, "P")
+        self.assertEqual(self.game.board.get_piece_at("c5").color, COLOR["black"])
+        
+        # Verify white pawn still on d5
+        self.assertIsNotNone(self.game.board.get_piece_at("d5"))
+        self.assertEqual(self.game.board.get_piece_at("d5").type, "P")
+
+
 if __name__ == "__main__":
     unittest.main()
