@@ -347,5 +347,96 @@ class TestStalemateDetection(unittest.TestCase):
         self.assertFalse(self.game.stalemate(COLOR["black"]))
 
 
+class TestCastling(unittest.TestCase):
+    def setUp(self):
+        self.game = Game()
+
+    def _clear_board(self):
+        for square in self.game.board.board.keys():
+            self.game.board.remove_piece_at(square)
+
+    def test_white_kingside_castling_moves_both_pieces(self):
+        self._clear_board()
+
+        white_king = King(COLOR["white"], "e1")
+        white_rook = Rook(COLOR["white"], "h1")
+        black_king = King(COLOR["black"], "a8")
+
+        self.game.board.set_piece_at("e1", white_king)
+        self.game.board.set_piece_at("h1", white_rook)
+        self.game.board.set_piece_at("a8", black_king)
+        self.game.current_turn = COLOR["white"]
+
+        self.game.make_move("e1", "g1")
+
+        self.assertIsNone(self.game.board.get_piece_at("e1"))
+        self.assertIsNone(self.game.board.get_piece_at("h1"))
+        self.assertEqual(self.game.board.get_piece_at("g1").type, "K")
+        self.assertEqual(self.game.board.get_piece_at("f1").type, "R")
+        self.assertEqual(self.game.current_turn, COLOR["black"])
+
+    def test_king_two_square_move_without_rook_is_invalid(self):
+        self._clear_board()
+
+        white_king = King(COLOR["white"], "e1")
+        black_king = King(COLOR["black"], "a8")
+
+        self.game.board.set_piece_at("e1", white_king)
+        self.game.board.set_piece_at("a8", black_king)
+        self.game.current_turn = COLOR["white"]
+
+        with self.assertRaises(ValueError):
+            self.game.make_move("e1", "g1")
+
+    def test_cannot_castle_through_attacked_square(self):
+        self._clear_board()
+
+        white_king = King(COLOR["white"], "e1")
+        white_rook = Rook(COLOR["white"], "h1")
+        black_king = King(COLOR["black"], "a8")
+        black_pawn = Pawn(COLOR["black"], "g2")  # attacks f1
+
+        self.game.board.set_piece_at("e1", white_king)
+        self.game.board.set_piece_at("h1", white_rook)
+        self.game.board.set_piece_at("a8", black_king)
+        self.game.board.set_piece_at("g2", black_pawn)
+        self.game.current_turn = COLOR["white"]
+
+        with self.assertRaises(ValueError):
+            self.game.make_move("e1", "g1")
+
+    def test_cannot_castle_while_in_check(self):
+        self._clear_board()
+
+        white_king = King(COLOR["white"], "e1")
+        white_rook = Rook(COLOR["white"], "h1")
+        black_king = King(COLOR["black"], "a8")
+        black_rook = Rook(COLOR["black"], "e8")
+
+        self.game.board.set_piece_at("e1", white_king)
+        self.game.board.set_piece_at("h1", white_rook)
+        self.game.board.set_piece_at("a8", black_king)
+        self.game.board.set_piece_at("e8", black_rook)
+        self.game.current_turn = COLOR["white"]
+
+        with self.assertRaises(ValueError):
+            self.game.make_move("e1", "g1")
+
+    def test_get_all_valid_moves_includes_castling(self):
+        self._clear_board()
+
+        white_king = King(COLOR["white"], "e1")
+        white_rook = Rook(COLOR["white"], "h1")
+        black_king = King(COLOR["black"], "a8")
+
+        self.game.board.set_piece_at("e1", white_king)
+        self.game.board.set_piece_at("h1", white_rook)
+        self.game.board.set_piece_at("a8", black_king)
+
+        moves = self.game.get_all_valid_moves(COLOR["white"])
+
+        self.assertIn(("e1", "g1"), moves)
+
+
 if __name__ == "__main__":
     unittest.main()

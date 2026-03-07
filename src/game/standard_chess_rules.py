@@ -132,3 +132,13 @@ class StandardChessRules:
             current_rank += rank_step
 
         return True
+    
+    def is_valid_pawn_attack(self, pawn, from_position, to_position):
+        """Check if a pawn can attack a specific position."""
+        from_file, from_rank = self.algebraic_to_coordinate(from_position)
+        to_file, to_rank = self.algebraic_to_coordinate(to_position)
+
+        if pawn.color == COLOR["white"]:
+            return (to_rank - from_rank == 1) and (abs(to_file - from_file) == 1)
+        else:  # black pawn
+            return (from_rank - to_rank == 1) and (abs(to_file - from_file) == 1)
