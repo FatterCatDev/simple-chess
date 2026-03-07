@@ -137,6 +137,15 @@ class Game:
         # Save the current state of the board and piece positions
         original_piece_has_moved = piece.has_moved
         captured_piece = self.board.get_piece_at(to_position)
+
+        # Check if en passant capture is happening
+        en_passant_capture = None
+        en_passant_position = None
+        if piece.type == "P" and self.last_move and self.last_move["was_two_square_pawn_move"]:
+            if self.rules.is_en_passant_possible(piece.position, to_position, self.last_move):
+                en_passant_position = f"{to_position[0]}{from_position[1]}"
+                en_passant_capture = self.board.get_piece_at(en_passant_position)
+                self.board.remove_piece_at(en_passant_position)  # Temporarily remove the captured pawn for the check test
         
         # Temporarily make the move
         self.board.move_piece(from_position, to_position)
@@ -150,6 +159,9 @@ class Game:
         piece.has_moved = original_piece_has_moved
         if captured_piece:
             captured_piece.position = to_position  # Restore captured piece's position if it was captured
+        if en_passant_capture and en_passant_position:
+            self.board.set_piece_at(en_passant_position, en_passant_capture)  # Restore captured pawn in en passant
+            en_passant_capture.position = en_passant_position  # Restore captured pawn's position
         
         return in_check
     
@@ -159,7 +171,7 @@ class Game:
         for from_position, piece in self.board.board.items():
             if piece and piece.color == color:
                 for to_position in self.board.board.keys():
-                    if self.rules.is_valid_move(from_position, to_position):
+                    if self.rules.is_valid_move(from_position, to_position, self.last_move):
                         if not self.would_be_in_check_after_move(from_position, to_position):
                             valid_moves.append((from_position, to_position))
             if piece and piece.color == color and piece.type == "K":
