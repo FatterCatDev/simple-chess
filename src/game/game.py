@@ -8,6 +8,7 @@ class Game:
         self.rules = StandardChessRules(self.board)
         self.current_turn = COLOR["white"]  # White starts first
         self.game_over = False
+        self.last_move = None  # Initialize last_move to None
 
 
 
@@ -43,7 +44,16 @@ class Game:
                 raise ValueError(f"Move from {from_position} to {to_position} would put {self.current_turn} in check.")
         
         if not castled:
+            captured_piece = self.board.get_piece_at(to_position)
             self.board.move_piece(from_position, to_position)
+            self.last_move = {
+                "piece_type": piece.type,
+                "piece_color": piece.color,
+                "from": from_position,
+                "to": to_position,
+                "captured_piece": captured_piece if captured_piece else None,
+                "was_two_square_pawn_move": piece.type == "P" and abs(int(from_position[1]) - int(to_position[1])) == 2,
+            }
 
         if self.in_check(self.opponent_color()):
             if self.checkmate(self.opponent_color()):
@@ -223,3 +233,17 @@ class Game:
         # Move the king and rook to their new positions
         self.board.move_piece(king_position, new_king_position)
         self.board.move_piece(rook_position, new_rook_position)
+        self.last_move = {
+            "piece_type": king.type,
+            "piece_color": king.color,
+            "from": king_position,
+            "to": new_king_position,
+            "captured_piece": None,
+            "was_castling_move": True,
+            "was_two_square_pawn_move": False,
+        }
+
+    def last_move(self):
+        """Return the last move made in the game."""
+        # This method can be implemented to track and return the last move made.
+        pass
