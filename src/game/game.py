@@ -32,6 +32,10 @@ class Game:
         move_information = {}
         castled = False
         en_passant = False
+        pre_move_is_in_check = self.is_in_check  # Store the check status before the move for undo functionality
+        self.is_in_check = False  # Reset check status at the start of the move
+        pre_move_halfmove_clock = self.halfmove_clock  # Store the halfmove clock before the move for undo functionality
+
         if self.game_over:
             raise ValueError("The game is over. No more moves can be made.")
         
@@ -75,8 +79,6 @@ class Game:
                 captured_pawn_position = f"{to_position[0]}{from_position[1]}"
                 captured_piece = self.board.get_piece_at(captured_pawn_position)  # Update captured_piece for last_move record
                 self.board.remove_piece_at(captured_pawn_position)
-
-        self._record_last_move(piece, from_position, to_position, captured_piece, piece.type == "P" and abs(int(from_position[1]) - int(to_position[1])) == 2)
 
         # Handle pawn promotion
         was_promotion = False
@@ -153,11 +155,15 @@ class Game:
             "draw_reason": self.draw_reason,
             "last_move": self.last_move,
             "halfmove_clock": self.halfmove_clock,
+            "pre_move_halfmove_clock": pre_move_halfmove_clock,
             "position_history": self.position_history.copy(),
             "current_turn": self.current_turn,
             "piece_first_move_status": self.piece_first_move_status,
-            "was_promotion": was_promotion
+            "was_promotion": was_promotion,
+            "pre_move_is_in_check": pre_move_is_in_check,
         })
+
+        self._record_last_move(piece, from_position, to_position, captured_piece, piece.type == "P" and abs(int(from_position[1]) - int(to_position[1])) == 2)
                 
         if not self.game_over:
             self.switch_turn()
@@ -487,17 +493,18 @@ class Game:
         was_castling = last_move["was_castling"]
         was_en_passant = last_move["was_en_passant"]
         piece_first_move_status = last_move["piece_first_move_status"]
-        was_in_check = last_move["is_in_check"]
-        halfmove_clock = last_move["halfmove_clock"]
-        was_promotion = last_move["was_promotion"]
+        was_in_check = last_move["pre_move_is_in_check"] if "pre_move_is_in_check" in last_move else False
+        halfmove_clock = last_move["pre_move_halfmove_clock"] if "pre_move_halfmove_clock" in last_move else 0
+        was_promotion = last_move["was_promotion"] if "was_promotion" in last_move else False
+        history_last_move = last_move["last_move"].copy() if last_move["last_move"] else None  # Restore the last move before the undone move
 
         # Restore game state variables
         self.current_turn = piece_color  # It's now the turn of the player who made the last move
         self.game_over = False  # Reset game over status
-        self.last_move = None if not self.move_history else self.move_history[-1]  # Restore last move if available
+        self.last_move = history_last_move  # Restore last move before the undone move
         self.is_draw = False  # Reset draw status
         self.is_in_check = was_in_check  # Restore check status
-        self.halfmove_clock = halfmove_clock  # Restore halfmove clock
+        self.halfmove_clock = halfmove_clock  #Restore halfmove clock
         self.piece_first_move_status = piece_first_move_status  # Restore first move status for the piece
         self.draw_reason = None  # Reset draw reason
 
