@@ -14,6 +14,7 @@ class Game:
         self.halfmove_clock = 0  # Count of half-moves since the last pawn move or capture (for fifty-move rule)
         self.enable_fifty_move_rule = enable_fifty_move_rule  # Flag to enable or disable the fifty-move rule
         self.position_history = []  # List to keep track of board positions for threefold repetition detection
+        self.is_in_check = False  # Flag to indicate if the current player is in check
         self.last_move = None   # Initialize last_move to None
                                 # "piece_type": piece.type,
                                 # "piece_color": piece.color,
@@ -21,9 +22,11 @@ class Game:
                                 # "to": to_position,
                                 # "captured_piece": captured_piece if captured_piece else None,
                                 # "was_two_square_pawn_move": was_two_square_pawn_move
+        self.move_history = []  # List to keep track of all moves made in the game for notation/ save games/ replay purposes
 
     def make_move(self, from_position, to_position, promotion_choice="Q"):
         """Make a move on the board if it's valid."""
+        move_information = {}
         castled = False
         en_passant = False
         if self.game_over:
@@ -84,38 +87,56 @@ class Game:
             self.game_over = True
             self.is_draw = True
             self.draw_reason = "Threefold repetition"
-            print("Draw by threefold repetition.")
+            # print("Draw by threefold repetition.")
         elif self.enable_fifty_move_rule and self.halfmove_clock >= 100:
             self.game_over = True
             self.is_draw = True
             self.draw_reason = "Fifty-move rule"
-            print("Draw by fifty-move rule.")
+            # print("Draw by fifty-move rule.")
 
         if self.check_insufficient_material():
             self.game_over = True
             self.is_draw = True
             self.draw_reason = "Insufficient material"
-            print("Draw due to insufficient material.")
+            # print("Draw due to insufficient material.")
 
         if self.in_check(self.opponent_color()):
             if self.checkmate(self.opponent_color()):
                 self.game_over = True
-                print(f"Checkmate! {self.current_turn} wins.")
+                # print(f"Checkmate! {self.current_turn} wins.")
             else:
-                print(f"{self.opponent_color()} is in check.")
+                self.is_in_check = True
+                # print(f"{self.opponent_color()} is in check.")
         
         if self.stalemate(self.opponent_color()):
             self.game_over = True
             self.is_draw = True
             self.draw_reason = "Stalemate"
-            print("Stalemate! The game is a draw.")
+            # print("Stalemate! The game is a draw.")
+
+        self.move_history.append({
+            "san": self.generate_san_lite(from_position, to_position, piece, captured_piece, promotion_choice, castled, en_passant),
+            "from": from_position,
+            "to": to_position,
+            "piece": piece,
+            "captured_piece": captured_piece,
+            "promotion_choice": promotion_choice,
+            "was_castling": castled,
+            "was_en_passant": en_passant,
+            "was_two_square_pawn_move": piece.type == "P" and abs(int(from_position[1]) - int(to_position[1])) == 2,
+            "is_in_check": self.is_in_check,
+            "draw_reason": self.draw_reason,
+            "last_move": self.last_move,
+            "halfmove_clock": self.halfmove_clock,
+            "position_history": self.position_history.copy(),
+            "current_turn": self.current_turn,
+        })
                 
         if not self.game_over:
             self.switch_turn()
-        elif self.game_over and self.is_draw:
-            print(f"The game ended in a draw due to {self.draw_reason}.")
-        elif self.game_over:
-            print(f"Game over. {self.current_turn} wins.")
+
+        return self.move_history[-1]  # Return the last move made
+        # print(f"The game ended in a draw due to {self.draw_reason}.")
 
 
     def switch_turn(self):
@@ -156,6 +177,7 @@ class Game:
         self.halfmove_clock = 0  
         self.position_history = []
         self.last_move = None  
+        self.move_history = []
 
     def find_king(self, color):
         """Find the king piece of the specified color."""
@@ -364,6 +386,45 @@ class Game:
             # Both sides have only kings and bishops, and both bishops are on the same color
             bishops = [piece for piece in pieces if piece.type == "B"]
             if len(bishops) == 2:
-                bishop_colors = [self.get_square_color(piece.position) for piece in bishops]
+                bishop_colors = [self.board.get_square_color(piece.position) for piece in bishops]
                 return bishop_colors[0] == bishop_colors[1]
         return False
+    
+    # SAN-Lite Builder, generates simplified SAN notation
+    def generate_san_lite(self, 
+                          from_position, 
+                          to_position, 
+                          piece, 
+                          captured_piece=None, 
+                          promotion_choice=None, 
+                          was_castling=False, 
+                          was_en_passant=False, 
+                          is_draw=False,
+                          is_in_check=False,
+                          is_checkmate=False):
+        """Generate a simplified SAN (Standard Algebraic Notation) for the move."""
+        san = ""
+        if was_castling:
+            if to_position[0] == 'g':
+                san = "O-O"  # Kingside castling
+            elif to_position[0] == 'c':
+                san = "O-O-O"  # Queenside castling
+        else:
+            if piece.type != "P":
+                san += piece.type  # Add piece type for non-pawn moves
+            if captured_piece:
+                if piece.type == "P":
+                    san += from_position[0]  # Add file of pawn for captures
+                san += "x"  # Indicate capture
+            san += to_position  # Add destination square
+            if promotion_choice:
+                san += f"={promotion_choice}"  # Indicate promotion
+            if was_en_passant:
+                san += " e.p."  # Indicate en passant capture
+            if is_draw:
+                san += " (draw)"  # Indicate draw
+            if is_in_check:
+                san += "+"  # Indicate check
+            if is_checkmate:
+                san += "#"  # Indicate checkmate
+        return san

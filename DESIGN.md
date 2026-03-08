@@ -11,8 +11,10 @@ Personal project. This is a learning exercise for the developer.
 ### 1.3 Scope
 A functional chess game with the following requirements:
 - Cross-platform compatibility (Windows, macOS, Linux)
-- Basic chess rules implementation
+- Standard chess rules implementation
 - Simple user interface for gameplay
+- Save games in chess notation format
+- Load notation and replay games step by step
 - Focus on clean, maintainable Python code
 
 ---
@@ -20,30 +22,30 @@ A functional chess game with the following requirements:
 ## 2. Core Features
 
 ### 2.1 MVP (Minimum Viable Product)
-<!-- List the essential features needed for a working chess game -->
-
 - [ ] Display a chess board in a Tkinter window
 - [x] Move pieces with standard chess rules
 - [x] Human vs Human gameplay (core logic ready)
-- [x] Game status display (check, checkmate, stalemate detection implemented)
-- [x] Undo/Reset game functionality
+- [x] Game status logic (check, checkmate, stalemate, draw rules)
+- [x] Reset game functionality
+- [ ] Undo move functionality
+- [ ] Save game to notation
+- [ ] Load game from notation
+- [ ] Step-by-step replay from notation
 - [x] Architecture ready for AI integration
 
-### 2.2 Current Implementation Status (Phase 2 Complete)
+### 2.2 Current Implementation Status
 - [x] All piece movement rules implemented and tested
 - [x] Check detection working
 - [x] Checkmate detection with automatic game end
 - [x] Stalemate detection with automatic game end
 - [x] Move validation prevents self-check
-- [x] Unit tests: 20+ tests passing
-- [ ] Special moves: Castling, En Passant, Pawn Promotion (pending)
+- [x] Special moves: castling, en passant, promotion
+- [x] Draw rules: threefold repetition, fifty-move rule, insufficient material
+- [x] Unit tests: 65 passing (2 skipped)
+- [ ] Move notation history (SAN/PGN-like) not implemented yet
 
 ### 2.3 Future Features
-<!-- Nice-to-have features for later versions -->
-
 - [ ] AI opponent (Stockfish integration)
-- [ ] Game save/load functionality
-- [ ] Move history and replay
 - [ ] Different difficulty levels for AI
 - [ ] Timer for timed games
 - [ ] Custom themes and board colors
@@ -62,14 +64,15 @@ Modular architecture with clear separation of concerns:
 This design allows for easy swapping of AI engines or game modes without affecting the GUI or core logic.
 
 ### 3.2 Main Components
-<!-- List the major components/modules needed -->
-
 - **ChessBoard**: Represents the 8x8 board and piece positions
 - **Piece**: Represents individual chess pieces (Pawn, Rook, Knight, etc.)
 - **Game**: Manages game state, turn logic, and move validation
+- **StandardChessRules**: Piece movement and special-move legality checks
 - **GUI/ChessApp**: Tkinter window and user interface
 - **AIEngine** (Optional): Interface for chess bot integration (e.g., Stockfish)
-- **MoveValidator**: Validates moves according to chess rules
+- **Notation Builder**: Generates move notation history from validated moves
+- **Notation Parser**: Reads stored notation and converts it into executable moves
+- **Replay Controller**: Supports stepping forward/backward through saved moves
 
 ### 3.3 Data Flow
 User clicks on board → GUI captures event → Game validates move → Board updates → AI makes move (if enabled) → GUI refreshes display
@@ -96,9 +99,12 @@ Pieces will be represented as sprite images on the canvas:
 Game state tracks:
 - Current board position (which piece is on which square)
 - Whose turn it is (White or Black)
-- Move history (for undo functionality)
-- Game status (active, checkmate, stalemate, check)
+- Last move metadata (for en passant and future notation)
+- Draw tracking state (halfmove clock, repetition history)
+- Game status (active, check, checkmate, stalemate, draw)
 - Captured pieces
+- Notation move history
+- Replay cursor/index for step-by-step navigation
 
 ---
 
@@ -116,17 +122,19 @@ All piece movements follow standard FIDE (International Chess Federation) rules:
 No pieces can move through other pieces (except Knight).
 
 ### 5.2 Special Moves
-Implement the following FIDE special moves:
-- **Castling** (if both King and Rook haven't moved, no pieces between them, King not in check)
-- **En Passant** (Pawn capture of opponent's pawn that just moved two squares)
-- **Pawn Promotion** (Pawn reaching the 8th rank promotes to Queen, Rook, Bishop, or Knight)
+Implemented FIDE special moves:
+- **Castling**
+- **En Passant**
+- **Pawn Promotion**
 
 ### 5.3 Win/Loss Conditions
 - **Checkmate**: Opponent's King is in check and has no legal moves → Current player wins
 - **Stalemate**: Opponent's King is NOT in check but has no legal moves → Draw
-- **Resignation**: Player chooses to give up → Opponent wins
-- **Draw by agreement**: Both players agree to draw
-- **Insufficient material**: Neither player has enough pieces to checkmate
+- **Threefold repetition**: Same position repeated three times → Draw
+- **Fifty-move rule**: 100 half-moves without pawn move/capture → Draw
+- **Insufficient material**: Neither player has enough pieces to checkmate → Draw
+- **Resignation** (planned)
+- **Draw by agreement** (planned)
 
 ---
 
@@ -152,8 +160,6 @@ The window will display the chess board and game interface with no command-line 
 ## 7. Implementation Plan
 
 ### 7.1 Phase 1: Project Setup & Core Data Structures
-<!-- Initial project structure and basic pieces -->
-
 - [x] Create folder structure (gui/, game/, ai/, utils/)
 - [x] Create Piece class (base class for all pieces)
 - [x] Create specific piece classes (Pawn, Rook, Knight, Bishop, Queen, King)
@@ -164,19 +170,37 @@ The window will display the chess board and game interface with no command-line 
 - [x] Test data structures with print statements
 
 ### 7.2 Phase 2: Game Logic & Move Validation
-<!-- Implement board and move validation -->
-
 - [x] Implement move validation for each piece type
 - [x] Implement blocking logic (pieces can't move through obstacles)
-- [ ] Implement special moves (Castling, En Passant, Promotion)
+- [x] Implement special moves (Castling, En Passant, Promotion)
 - [x] Implement check detection
 - [x] Implement checkmate detection
 - [x] Implement stalemate detection
-- [x] Implement move history/undo functionality
-- [x] Test game logic with unit tests (20+ passing)
+- [x] Implement draw rules (threefold, fifty-move, insufficient material)
+- [x] Test game logic with unit tests (65 passing, 2 skipped)
 
-### 7.3 Phase 3: GUI & User Interaction
-<!-- Add UI and player interaction -->
+### 7.3 Phase 2.5: Notation Builder (Next)
+- [ ] Define notation scope (SAN-lite vs full SAN)
+- [ ] Add move history storage in `Game`
+- [ ] Record notation per successful move
+- [ ] Support notation for:
+    - [ ] normal moves and captures
+    - [ ] castling (`O-O`, `O-O-O`)
+    - [ ] en passant captures
+    - [ ] promotions (`=Q`, `=R`, `=B`, `=N`)
+    - [ ] check (`+`) and checkmate (`#`)
+- [ ] Add unit tests for notation output
+- [ ] Export notation history to file
+
+### 7.35 Phase 2.6: Notation Import and Replay (Required)
+- [ ] Parse saved notation into move sequence
+- [ ] Validate parsed moves against game rules
+- [ ] Build replay state from parsed moves
+- [ ] Implement replay controls: start, previous, next, end
+- [ ] Show current move number and notation during replay
+- [ ] Add unit/integration tests for import and replay flows
+
+### 7.4 Phase 3: GUI & User Interaction
 
 - [ ] Create Tkinter main window
 - [ ] Draw chess board (8x8 grid with lines)
@@ -190,10 +214,13 @@ The window will display the chess board and game interface with no command-line 
 - [ ] Add Rules/Help dialog
 - [ ] Add game over dialog (Checkmate/Stalemate)
 - [ ] Add pawn promotion dialog
+- [ ] Add notation panel/move list
+- [ ] Add save notation button
+- [ ] Add load notation button
+- [ ] Add replay controls (Prev/Next/Play/Pause)
 - [ ] Test GUI interactions
 
-### 7.4 Phase 4: Polish & Distribution
-<!-- Testing and refinement -->
+### 7.5 Phase 4: Polish & Distribution
 
 - [ ] Code review and refactoring
 - [ ] Add comprehensive comments
@@ -226,7 +253,7 @@ src/
 │   ├── board.py      # Board representation
 │   ├── piece.py      # Piece classes
 │   ├── game.py       # Game logic
-│   └── rules.py      # Chess rules validator
+│   └── standard_chess_rules.py  # Chess rules validator
 ├── ai/
 │   └── engine.py     # AI engine interface (optional)
 └── utils/
@@ -238,13 +265,19 @@ src/
 ## 9. Testing Strategy
 
 ### 9.1 Unit Tests
-<!-- What needs to be tested? -->
+- Piece movement legality
+- Special moves (castling, en passant, promotion)
+- Check/checkmate/stalemate detection
+- Draw conditions (threefold repetition, fifty-move, insufficient material)
+- Notation output (next phase)
 
 ### 9.2 Integration Tests
-<!-- How components work together -->
+- End-to-end move sequences (opening patterns, checkmates, draws)
+- GUI interaction tests (after UI phase)
 
 ---
 
 ## 10. Notes & References
-<!-- Any additional notes or resources -->
+- Current immediate priority: notation builder, notation import, and replay support in the game layer.
+- Keep engine logic deterministic and test-first as notation features are added.
 

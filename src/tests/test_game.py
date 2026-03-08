@@ -741,5 +741,99 @@ class TestPromotion(unittest.TestCase):
         self.assertEqual(self.game.board.get_piece_at("d5").type, "P")
 
 
+class TestMoveHistory(unittest.TestCase):
+    def setUp(self):
+        self.game = Game()
+
+    def _clear_board(self):
+        for square in self.game.board.board.keys():
+            self.game.board.remove_piece_at(square)
+
+    def test_move_history_starts_empty(self):
+        self.assertEqual(self.game.move_history, [])
+
+    def test_make_move_returns_last_history_entry(self):
+        move_info = self.game.make_move("e2", "e4")
+        self.assertEqual(len(self.game.move_history), 1)
+        self.assertEqual(move_info["from"], self.game.move_history[-1]["from"])
+        self.assertEqual(move_info["to"], self.game.move_history[-1]["to"])
+        self.assertIn("game_over", move_info)
+        self.assertIn("is_draw", move_info)
+
+    def test_move_history_records_basic_move_metadata(self):
+        self.game.make_move("e2", "e4")
+        entry = self.game.move_history[-1]
+
+        self.assertEqual(entry["from"], "e2")
+        self.assertEqual(entry["to"], "e4")
+        self.assertEqual(entry["piece"].type, "P")
+        self.assertFalse(entry["was_castling"])
+        self.assertFalse(entry["was_en_passant"])
+        self.assertTrue(entry["was_two_square_pawn_move"])
+        self.assertEqual(entry["current_turn"], COLOR["white"])
+
+    def test_move_history_san_for_pawn_push(self):
+        self.game.make_move("e2", "e4")
+        self.assertEqual(self.game.move_history[-1]["san"], "e4")
+
+    def test_move_history_san_for_kingside_castling(self):
+        self._clear_board()
+
+        white_king = King(COLOR["white"], "e1")
+        white_rook = Rook(COLOR["white"], "h1")
+        black_king = King(COLOR["black"], "a8")
+
+        self.game.board.set_piece_at("e1", white_king)
+        self.game.board.set_piece_at("h1", white_rook)
+        self.game.board.set_piece_at("a8", black_king)
+        self.game.current_turn = COLOR["white"]
+
+        self.game.make_move("e1", "g1")
+        entry = self.game.move_history[-1]
+
+        self.assertTrue(entry["was_castling"])
+        self.assertEqual(entry["san"], "O-O")
+
+    def test_move_history_san_for_en_passant(self):
+        self._clear_board()
+
+        white_pawn = Pawn(COLOR["white"], "e5")
+        black_pawn = Pawn(COLOR["black"], "d7")
+        white_king = King(COLOR["white"], "e1")
+        black_king = King(COLOR["black"], "e8")
+
+        self.game.board.set_piece_at("e5", white_pawn)
+        self.game.board.set_piece_at("d7", black_pawn)
+        self.game.board.set_piece_at("e1", white_king)
+        self.game.board.set_piece_at("e8", black_king)
+
+        white_pawn.has_moved = True
+        self.game.current_turn = COLOR["black"]
+        self.game.make_move("d7", "d5")
+
+        self.game.make_move("e5", "d6")
+        entry = self.game.move_history[-1]
+
+        self.assertTrue(entry["was_en_passant"])
+        self.assertEqual(entry["san"], "exd6 e.p.")
+
+    def test_move_history_san_for_promotion(self):
+        self._clear_board()
+
+        white_pawn = Pawn(COLOR["white"], "e7")
+        white_king = King(COLOR["white"], "e1")
+        black_king = King(COLOR["black"], "a8")
+
+        self.game.board.set_piece_at("e7", white_pawn)
+        self.game.board.set_piece_at("e1", white_king)
+        self.game.board.set_piece_at("a8", black_king)
+
+        white_pawn.has_moved = True
+        self.game.current_turn = COLOR["white"]
+
+        self.game.make_move("e7", "e8", "N")
+        self.assertEqual(self.game.move_history[-1]["san"], "e8=N")
+
+
 if __name__ == "__main__":
     unittest.main()
