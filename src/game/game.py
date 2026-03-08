@@ -74,10 +74,12 @@ class Game:
         self._record_last_move(piece, from_position, to_position, captured_piece, piece.type == "P" and abs(int(from_position[1]) - int(to_position[1])) == 2)
 
         # Handle pawn promotion
+        was_promotion = False
         if piece.type == "P":
             promotion_rank = 8 if piece.color == COLOR["white"] else 1
             if int(to_position[1]) == promotion_rank:
                 self.promotion(to_position, promotion_choice)
+                was_promotion = True
 
         # Check for check, checkmate, and stalemate
 
@@ -99,10 +101,12 @@ class Game:
             self.is_draw = True
             self.draw_reason = "Insufficient material"
             # print("Draw due to insufficient material.")
-
+        
+        is_checkmate = False
         if self.in_check(self.opponent_color()):
             if self.checkmate(self.opponent_color()):
                 self.game_over = True
+                is_checkmate = True
                 # print(f"Checkmate! {self.current_turn} wins.")
             else:
                 self.is_in_check = True
@@ -115,7 +119,18 @@ class Game:
             # print("Stalemate! The game is a draw.")
 
         self.move_history.append({
-            "san": self.generate_san_lite(from_position, to_position, piece, captured_piece, promotion_choice, castled, en_passant),
+            "san": self.generate_san_lite(
+                from_position, 
+                to_position, piece, 
+                captured_piece, 
+                promotion_choice, 
+                castled, 
+                en_passant, 
+                self.is_draw,
+                self.is_in_check,
+                is_checkmate,
+                was_promotion
+                ),
             "from": from_position,
             "to": to_position,
             "piece": piece,
@@ -401,7 +416,8 @@ class Game:
                           was_en_passant=False, 
                           is_draw=False,
                           is_in_check=False,
-                          is_checkmate=False):
+                          is_checkmate=False,
+                          was_promotion=False):
         """Generate a simplified SAN (Standard Algebraic Notation) for the move."""
         san = ""
         if was_castling:
@@ -417,7 +433,7 @@ class Game:
                     san += from_position[0]  # Add file of pawn for captures
                 san += "x"  # Indicate capture
             san += to_position  # Add destination square
-            if promotion_choice:
+            if was_promotion:
                 san += f"={promotion_choice}"  # Indicate promotion
             if was_en_passant:
                 san += " e.p."  # Indicate en passant capture
@@ -428,3 +444,17 @@ class Game:
             if is_checkmate:
                 san += "#"  # Indicate checkmate
         return san
+
+    def export_notation(self):
+        """Export the move history in a simplified SAN format."""
+        return [move["san"] for move in self.move_history]
+    
+    def load_notation(self, notation_list):
+        """Load a game from a simplified SAN notation list."""
+        self.reset_game()  # Reset the game before loading
+        for san in notation_list:
+            # Here you would implement the logic to parse the SAN notation and make the corresponding moves
+            # This is a complex task and would require a full SAN parser, which is beyond the scope of this implementation.
+            # For now, we'll raise a NotImplementedError to indicate that this feature is not yet implemented.
+            raise NotImplementedError("Loading from SAN notation is not implemented yet.")
+        

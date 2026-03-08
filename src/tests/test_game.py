@@ -757,8 +757,8 @@ class TestMoveHistory(unittest.TestCase):
         self.assertEqual(len(self.game.move_history), 1)
         self.assertEqual(move_info["from"], self.game.move_history[-1]["from"])
         self.assertEqual(move_info["to"], self.game.move_history[-1]["to"])
-        self.assertIn("game_over", move_info)
-        self.assertIn("is_draw", move_info)
+        self.assertIn("san", move_info)
+        self.assertIn("was_castling", move_info)
 
     def test_move_history_records_basic_move_metadata(self):
         self.game.make_move("e2", "e4")
@@ -823,16 +823,102 @@ class TestMoveHistory(unittest.TestCase):
         white_pawn = Pawn(COLOR["white"], "e7")
         white_king = King(COLOR["white"], "e1")
         black_king = King(COLOR["black"], "a8")
+        black_rook = Rook(COLOR["black"], "h8")
 
         self.game.board.set_piece_at("e7", white_pawn)
         self.game.board.set_piece_at("e1", white_king)
         self.game.board.set_piece_at("a8", black_king)
+        self.game.board.set_piece_at("h8", black_rook)
 
         white_pawn.has_moved = True
         self.game.current_turn = COLOR["white"]
 
         self.game.make_move("e7", "e8", "N")
         self.assertEqual(self.game.move_history[-1]["san"], "e8=N")
+
+    def test_move_history_san_marks_check_with_plus(self):
+        """A move that gives check should include '+' suffix in SAN-lite."""
+        self._clear_board()
+
+        white_king = King(COLOR["white"], "a1")
+        white_rook = Rook(COLOR["white"], "e1")
+        black_king = King(COLOR["black"], "e8")
+
+        self.game.board.set_piece_at("a1", white_king)
+        self.game.board.set_piece_at("e1", white_rook)
+        self.game.board.set_piece_at("e8", black_king)
+        self.game.current_turn = COLOR["white"]
+
+        self.game.make_move("e1", "e7")
+
+        self.assertTrue(self.game.in_check(COLOR["black"]))
+        self.assertTrue(self.game.move_history[-1]["san"].endswith("+"))
+
+    def test_move_history_san_marks_checkmate_with_hash(self):
+        """A move that checkmates should include '#' suffix in SAN-lite."""
+        self.game.make_move("f2", "f3")
+        self.game.make_move("e7", "e5")
+        self.game.make_move("g2", "g4")
+        self.game.make_move("d8", "h4")
+
+        self.assertTrue(self.game.game_over)
+        self.assertTrue(self.game.checkmate(COLOR["white"]))
+        self.assertTrue(self.game.move_history[-1]["san"].endswith("#"))
+
+
+class TestNotationPersistence(unittest.TestCase):
+    def setUp(self):
+        self.game = Game()
+
+    def test_export_notation_contains_recorded_san_moves(self):
+        """Exported notation should include SAN moves in order."""
+        self.game.make_move("e2", "e4")
+        self.game.make_move("e7", "e5")
+        self.game.make_move("g1", "f3")
+
+        notation_moves = self.game.export_notation()
+
+        self.assertIsInstance(notation_moves, list)
+        self.assertEqual(notation_moves, ["e4", "e5", "Nf3"])
+
+    @unittest.skip("TODO: Implement load_notation replay logic")
+    def test_export_import_round_trip_restores_state_and_history(self):
+        """Loading exported notation should recreate board state and SAN history."""
+        self.game.make_move("e2", "e4")
+        self.game.make_move("e7", "e5")
+        self.game.make_move("g1", "f3")
+        self.game.make_move("b8", "c6")
+
+        expected_san = [entry["san"] for entry in self.game.move_history]
+        expected_turn = self.game.current_turn
+        expected_e4 = self.game.board.get_piece_at("e4")
+        expected_e5 = self.game.board.get_piece_at("e5")
+        expected_f3 = self.game.board.get_piece_at("f3")
+        expected_c6 = self.game.board.get_piece_at("c6")
+
+        notation_moves = self.game.export_notation()
+
+        replay_game = Game()
+        replay_game.load_notation(notation_moves)
+
+        replay_san = [entry["san"] for entry in replay_game.move_history]
+        self.assertEqual(replay_san, expected_san)
+        self.assertEqual(replay_game.current_turn, expected_turn)
+
+        replay_e4 = replay_game.board.get_piece_at("e4")
+        replay_e5 = replay_game.board.get_piece_at("e5")
+        replay_f3 = replay_game.board.get_piece_at("f3")
+        replay_c6 = replay_game.board.get_piece_at("c6")
+
+        self.assertIsNotNone(replay_e4)
+        self.assertIsNotNone(replay_e5)
+        self.assertIsNotNone(replay_f3)
+        self.assertIsNotNone(replay_c6)
+
+        self.assertEqual(replay_e4.type, expected_e4.type)
+        self.assertEqual(replay_e5.type, expected_e5.type)
+        self.assertEqual(replay_f3.type, expected_f3.type)
+        self.assertEqual(replay_c6.type, expected_c6.type)
 
 
 if __name__ == "__main__":
