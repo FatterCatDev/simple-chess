@@ -84,7 +84,6 @@ class Game:
             promotion_rank = 8 if piece.color == COLOR["white"] else 1
             if int(to_position[1]) == promotion_rank:
                 self.promotion(to_position, promotion_choice)
-                piece = self.board.get_piece_at(to_position)  # Update the piece reference after promotion
                 was_promotion = True
 
         # Check for check, checkmate, and stalemate
@@ -488,9 +487,9 @@ class Game:
         was_castling = last_move["was_castling"]
         was_en_passant = last_move["was_en_passant"]
         piece_first_move_status = last_move["piece_first_move_status"]
-        was_promotion = last_move["was_promotion"]
         was_in_check = last_move["is_in_check"]
         halfmove_clock = last_move["halfmove_clock"]
+        was_promotion = last_move["was_promotion"]
 
         # Restore game state variables
         self.current_turn = piece_color  # It's now the turn of the player who made the last move
@@ -504,16 +503,23 @@ class Game:
 
         # Restore the moved piece to its original position
         moved_piece = self.board.get_piece_at(to_position)
-        if moved_piece is None or moved_piece.type != piece_type or moved_piece.color != piece_color:
+        if moved_piece is None or moved_piece.color != piece_color:
             raise ValueError("Inconsistent game state: Moved piece not found at expected position.")
         
         # Restore to_postition when no capture occurred
         if captured_piece_type is None:
             self.board.set_piece_at(to_position, None)  # Remove the piece from the destination square
 
-        self.board.set_piece_at(from_position, moved_piece)
-        moved_piece.position = from_position
-        moved_piece.has_moved = piece_first_move_status  # Reset has_moved status if it's the first move of the piece
+        if not was_promotion:
+            self.board.set_piece_at(from_position, moved_piece)
+            moved_piece.position = from_position
+            moved_piece.has_moved = piece_first_move_status  # Reset has_moved status if it's the first move of the piece
+        else:
+            # Handle promotion undo
+            pawn_piece = Pawn(piece_color, from_position)
+            pawn_piece.has_moved = True  # The pawn has moved before promotion
+            self.board.set_piece_at(from_position, pawn_piece)
+            self.board.set_piece_at(to_position, None)  # Remove the promoted piece from the destination square
 
         # Restore any captured piece to its original position
         if captured_piece_type and captured_piece_color:
@@ -556,12 +562,6 @@ class Game:
                 raise ValueError("Inconsistent game state: Rook not found at expected position for castling undo.")
             
             self.board.set_piece_at(rook_from, rook)
+            self.board.set_piece_at(rook_to, None)
             rook.position = rook_from
             rook.has_moved = False  # Reset has_moved status for the rook
-        
-        # Restore promotion if it occurred
-        if was_promotion:
-            # Replace the promoted piece with a pawn
-            pawn_piece = Pawn(piece_color, from_position)
-            self.board.set_piece_at(from_position, pawn_piece)
-            self.board.set_piece_at(to_position, None)  # Remove the promoted piece from the destination square
