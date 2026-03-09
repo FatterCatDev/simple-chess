@@ -445,6 +445,8 @@ class Game:
         else:
             if move_info["piece"].type != "P" and not move_info["was_promotion"]:
                 san += move_info["piece"].type  # Add piece type for non-pawn moves
+            if self._if_san_disambiguation_needed(move_info["piece"].type, move_info["to"]):
+                san += move_info["from"]  # Add disambiguation if needed
             if move_info["captured_piece"]:
                 if move_info["piece"].type == "P":
                     san += move_info["from"][0]  # Add file of pawn for captures
@@ -468,12 +470,31 @@ class Game:
     
     def load_notation(self, notation_list):
         """Load a game from a simplified SAN notation list."""
+        if not isinstance(notation_list, list) or not all(isinstance(san, str) for san in notation_list):
+            raise ValueError("Notation list must be a list of SAN strings.")
+
         self.reset_game()  # Reset the game before loading
         for san in notation_list:
-            # Here you would implement the logic to parse the SAN notation and make the corresponding moves
-            # This is a complex task and would require a full SAN parser, which is beyond the scope of this implementation.
-            # For now, we'll raise a NotImplementedError to indicate that this feature is not yet implemented.
-            raise NotImplementedError("Loading from SAN notation is not implemented yet.")
+            clean_san, e_p_flag, promotion_type = self._strip_san_suffixes(san)
+            if clean_san in ["O-O", "O-O-O"]:
+                # Handle castling
+                rank = '1' if self.current_turn == COLOR["white"] else '8'
+                from_position = f"e{rank}"
+                to_position = f"g{rank}" if clean_san == "O-O" else f"c{rank}"
+                self.make_move(from_position, to_position)
+            else:
+                # Handle normal moves
+                piece_type = clean_san[0] if clean_san[0] in ["K", "Q", "R", "B", "N"] else "P"
+                to_position = clean_san[-2:]  # Last two characters are the destination square
+                if piece_type != "P":
+                    if len(clean_san) <= 4:
+                        from_position = self._find_piece_for_move(piece_type, to_position)
+                    else:
+                        from_position = clean_san[1:-2]  # Disambiguation part
+                else:
+                    from_position = f"{clean_san[0]}{int(to_position[1])-1 if self.current_turn == COLOR['white'] else int(to_position[1])+1}"  # For pawns, the file is given by the first character of SAN
+                self.make_move(from_position, to_position, promotion_choice=promotion_type if promotion_type else "Q")
+            
         
     def undo_move(self):
         """Undo the last move made in the game."""
@@ -574,3 +595,37 @@ class Game:
             self.board.set_piece_at(rook_to, None)
             rook.position = rook_from
             rook.has_moved = False  # Reset has_moved status for the rook
+
+    def _strip_san_suffixes(self, san):
+        """Strip check, checkmate, and draw indicators from SAN notation."""
+        e_p_flag = False
+        promotion_type = None
+        result = san.replace("+", "").replace("#", "").replace(" (draw)", "").strip()  # Remove check, checkmate, and draw indicators
+        if "e.p." in result:
+            e_p_flag = True
+            result = result.replace("e.p.", "")
+        if "=" in result:
+            promotion_type = result.split("=")[1]  # Extract promotion type
+            result = result.split("=")[0]  # Remove promotion part for move finding
+        return result, e_p_flag, promotion_type
+    
+    def _find_piece_for_move(self, piece_type, to_position):
+        """Find the piece of the specified type that can move to the given position."""
+        for from_position, piece in self.board.board.items():
+            if piece and piece.type == piece_type and piece.color == self.current_turn:
+                if self.rules.is_valid_move(from_position, to_position, self.last_move):
+                    return from_position
+        raise ValueError(f"No valid {piece_type} found that can move to {to_position}.")
+    
+    def _if_san_disambiguation_needed(self, piece_type, to_position):
+        """Generate disambiguation for SAN notation if multiple pieces of the same type can move to the same square."""
+        possible_moves = []
+        for from_position, piece in self.board.board.items():
+            if piece and piece.type == piece_type and piece.color == self.current_turn:
+                if self.rules.is_valid_move(from_position, to_position, self.last_move):
+                    possible_moves.append(from_position)
+        if not possible_moves:
+            raise ValueError(f"No valid {piece_type} found that can move to {to_position}.")
+        if len(possible_moves) == 1:
+            return True
+        return False
