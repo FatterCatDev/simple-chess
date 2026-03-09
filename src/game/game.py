@@ -91,41 +91,39 @@ class Game:
                 was_promotion = True
 
         # Check for check, checkmate, and stalemate
+        is_checkmate = False
+        target_color = self.opponent_color()
 
         self.log_position()  # Log the current position for threefold repetition detection
         self.halfmove_clock = self.halfmove_clock + 1 if piece.type != "P" and captured_piece is None else 0
-        if self.check_threefold_repetition():
+        if self.in_check(target_color): # Check if the opponent is in check after the move
+            if self.checkmate(target_color):
+                self.game_over = True
+                is_checkmate = True
+            else:
+                self.is_in_check = True
+                is_checkmate = False
+        elif self.stalemate(target_color):
+            self.game_over = True
+            self.is_draw = True
+            self.draw_reason = "Stalemate"
+            is_checkmate = False
+        
+        if self.check_threefold_repetition(): # Check for threefold repetition draw
             self.game_over = True
             self.is_draw = True
             self.draw_reason = "Threefold repetition"
-            # print("Draw by threefold repetition.")
+            is_checkmate = False
         elif self.enable_fifty_move_rule and self.halfmove_clock >= 100:
             self.game_over = True
             self.is_draw = True
             self.draw_reason = "Fifty-move rule"
-            # print("Draw by fifty-move rule.")
-
-        if self.check_insufficient_material():
+            is_checkmate = False
+        elif self.check_insufficient_material():
             self.game_over = True
             self.is_draw = True
             self.draw_reason = "Insufficient material"
-            # print("Draw due to insufficient material.")
-        
-        is_checkmate = False
-        if self.in_check(self.opponent_color()):
-            if self.checkmate(self.opponent_color()):
-                self.game_over = True
-                is_checkmate = True
-                # print(f"Checkmate! {self.current_turn} wins.")
-            else:
-                self.is_in_check = True
-                # print(f"{self.opponent_color()} is in check.")
-        
-        if self.stalemate(self.opponent_color()):
-            self.game_over = True
-            self.is_draw = True
-            self.draw_reason = "Stalemate"
-            # print("Stalemate! The game is a draw.")
+            is_checkmate = False
         
         move_info = {
             "piece": piece,
