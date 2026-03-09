@@ -1,14 +1,10 @@
-from game.standard_chess_rules import StandardChessRules
 from game.game import Game
-from game.board import ChessBoard
 
 class GameController:
     def __init__(self, game: Game):
         self.game = game
         self.selected_square = None
         self.last_error = None
-
-        self.game_state = self.get_state()
 
     def get_state(self):
         """Return the current state of the game."""
@@ -90,11 +86,16 @@ class GameController:
             else:
                 self.selected_square = None
         else:
-            if self.try_move(position):
-                self.selected_square = None
+            color_of_clicked_piece = self.game.board.get_piece_at(position).color if self.game.board.get_piece_at(position) else None
+            if color_of_clicked_piece == self.game.current_turn and position != self.selected_square:
+                # If the clicked square has a piece of the current turn, select it
+                self.selected_square = position
             else:
-                # If the move was invalid, keep the selection or clear it based on your design choice
-                self.selected_square = None  # or keep it as self.selected_square
+                if self.try_move(position):
+                    self.selected_square = None
+                else:
+                    # If the move was invalid, keep the selection or clear it based on your design choice
+                    self.selected_square = None  # or keep it as self.selected_square
 
     def build_board_state(self):
         """Build a representation of the board state for the GUI."""
