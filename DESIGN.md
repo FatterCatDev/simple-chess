@@ -27,9 +27,9 @@ A functional chess game with the following requirements:
 - [x] Human vs Human gameplay (core logic ready)
 - [x] Game status logic (check, checkmate, stalemate, draw rules)
 - [x] Reset game functionality
-- [ ] Undo move functionality
-- [ ] Save game to notation
-- [ ] Load game from notation
+- [x] Undo move functionality
+- [x] Save game to notation (SAN-lite move list export)
+- [x] Load game from notation (SAN-lite replay to final state)
 - [ ] Step-by-step replay from notation
 - [x] Architecture ready for AI integration
 
@@ -41,8 +41,12 @@ A functional chess game with the following requirements:
 - [x] Move validation prevents self-check
 - [x] Special moves: castling, en passant, promotion
 - [x] Draw rules: threefold repetition, fifty-move rule, insufficient material
-- [x] Unit tests: 65 passing (2 skipped)
-- [ ] Move notation history (SAN/PGN-like) not implemented yet
+- [x] Move notation history (SAN-lite) implemented
+- [x] Notation export and load replay implemented
+- [ ] Replay controls API (start/previous/next/end) not implemented yet
+- [x] Unit tests for game/rules/draw/notation import-export are in place
+- [ ] Replay-controls tests are currently red until API methods are implemented
+- [x] Current test run: 88 passed, 5 failed (expected replay-control gaps)
 
 ### 2.3 Future Features
 - [ ] AI opponent (Stockfish integration)
@@ -179,28 +183,30 @@ The window will display the chess board and game interface with no command-line 
 - [x] Implement checkmate detection
 - [x] Implement stalemate detection
 - [x] Implement draw rules (threefold, fifty-move, insufficient material)
-- [x] Test game logic with unit tests (65 passing, 2 skipped)
+- [x] Test game logic with unit tests (core logic green)
 
 ### 7.3 Phase 2.5: Notation Builder (Next)
-- [ ] Define notation scope (SAN-lite vs full SAN)
-- [ ] Add move history storage in `Game`
-- [ ] Record notation per successful move
-- [ ] Support notation for:
-    - [ ] normal moves and captures
-    - [ ] castling (`O-O`, `O-O-O`)
-    - [ ] en passant captures
-    - [ ] promotions (`=Q`, `=R`, `=B`, `=N`)
-    - [ ] check (`+`) and checkmate (`#`)
-- [ ] Add unit tests for notation output
+- [x] Define notation scope (SAN-lite)
+- [x] Add move history storage in `Game`
+- [x] Record notation per successful move
+- [x] Support notation for:
+    - [x] normal moves and captures
+    - [x] castling (`O-O`, `O-O-O`)
+    - [x] en passant captures
+    - [x] promotions (`=Q`, `=R`, `=B`, `=N`)
+    - [x] check (`+`) and checkmate (`#`)
+- [x] Add unit tests for notation output
+- [x] Export notation history in-memory (`export_notation`)
 - [ ] Export notation history to file
 
 ### 7.35 Phase 2.6: Notation Import and Replay (Required)
-- [ ] Parse saved notation into move sequence
-- [ ] Validate parsed moves against game rules
-- [ ] Build replay state from parsed moves
+- [x] Parse saved SAN-lite notation into move sequence
+- [x] Validate parsed moves against game rules
+- [x] Build replay final state from parsed moves
 - [ ] Implement replay controls: start, previous, next, end
 - [ ] Show current move number and notation during replay
-- [ ] Add unit/integration tests for import and replay flows
+- [x] Add unit tests for import/replay-to-final-state flows
+- [ ] Add unit/integration tests for step-by-step replay controls (tests written, currently failing as intended)
 
 ### 7.4 Phase 3: GUI & User Interaction
 
@@ -271,7 +277,8 @@ src/
 - Special moves (castling, en passant, promotion)
 - Check/checkmate/stalemate detection
 - Draw conditions (threefold repetition, fifty-move, insufficient material)
-- Notation output (next phase)
+- Notation output and import replay-to-final-state
+- Replay-control tests (currently failing until replay API implementation)
 
 ### 9.2 Integration Tests
 - End-to-end move sequences (opening patterns, checkmates, draws)
@@ -280,6 +287,6 @@ src/
 ---
 
 ## 10. Notes & References
-- Current immediate priority: notation builder, notation import, and replay support in the game layer.
+- Current immediate priority: implement step-by-step replay controls in the game layer to satisfy existing failing tests.
 - Keep engine logic deterministic and test-first as notation features are added.
 

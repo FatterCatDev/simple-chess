@@ -416,8 +416,6 @@ class Game:
             knights = [piece for piece in pieces if piece.type == "N"]
             if len(knights) == 2:
                 return True  # Two knights cannot checkmate
-            if len(bishops) == 1 and len(knights) == 1:
-                return True  # Bishop and knight cannot checkmate
             
         return False
     
@@ -492,10 +490,8 @@ class Game:
                     else:
                         from_position = clean_san[1:3]  # Disambiguation part
                 else:
-                    if "x" in clean_san:
-                        from_position = clean_san[0] + str(int(to_position[1]) - 1 if self.current_turn == COLOR["white"] else int(to_position[1]) + 1)  # File of the pawn + rank of destination
-                    else:
-                        from_position = to_position[0] + str(int(to_position[1]) - 1 if self.current_turn == COLOR["white"] else int(to_position[1]) + 1)  # File of the pawn + rank of destination
+                    capture_file = clean_san[0] if "x" in clean_san else None
+                    from_position = self._find_pawn_for_move(to_position, capture_file)
                 self.make_move(from_position, to_position, promotion_choice=promotion_type if promotion_type else "Q")
             
         
@@ -606,7 +602,7 @@ class Game:
         result = san.replace("+", "").replace("#", "").replace(" (draw)", "").strip()  # Remove check, checkmate, and draw indicators
         if "e.p." in result:
             e_p_flag = True
-            result = result.replace("e.p.", "")
+            result = result.replace(" e.p.", "")
         if "=" in result:
             promotion_type = result.split("=")[1]  # Extract promotion type
             result = result.split("=")[0]  # Remove promotion part for move finding
@@ -619,6 +615,19 @@ class Game:
                 if self.rules.is_valid_move(from_position, to_position, self.last_move):
                     return from_position
         raise ValueError(f"No valid {piece_type} found that can move to {to_position}.")
+
+    def _find_pawn_for_move(self, to_position, from_file=None):
+        """Find a pawn that can legally move to the target square in current state."""
+        for from_position, piece in self.board.board.items():
+            if not piece:
+                continue
+            if piece.type != "P" or piece.color != self.current_turn:
+                continue
+            if from_file and from_position[0] != from_file:
+                continue
+            if self.rules.is_valid_move(from_position, to_position, self.last_move):
+                return from_position
+        raise ValueError(f"No valid pawn found that can move to {to_position}.")
     
     def _if_san_disambiguation_needed(self, piece_type, to_position):
         """Generate disambiguation for SAN notation if multiple pieces of the same type can move to the same square."""
@@ -627,8 +636,6 @@ class Game:
             if piece and piece.type == piece_type and piece.color == self.current_turn:
                 if self.rules.is_valid_move(from_position, to_position, self.last_move):
                     possible_moves.append(from_position)
-        if not possible_moves:
-            raise ValueError(f"No valid {piece_type} found that can move to {to_position}.")
-        if len(possible_moves) == 1:
+        if len(possible_moves) <= 1 or not possible_moves:
             return False
         return True

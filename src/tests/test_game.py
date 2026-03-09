@@ -871,6 +871,22 @@ class TestNotationPersistence(unittest.TestCase):
     def setUp(self):
         self.game = Game()
 
+    def _assert_replay_matches_current_game(self):
+        """Replay exported notation and assert SAN, turn, and board snapshot match."""
+        notation_moves = self.game.export_notation()
+        expected_san = [entry["san"] for entry in self.game.move_history]
+        expected_snapshot = self.game.board.get_board_snapshot()
+        expected_turn = self.game.current_turn
+
+        replay_game = Game()
+        replay_game.load_notation(notation_moves)
+
+        replay_san = [entry["san"] for entry in replay_game.move_history]
+        self.assertEqual(replay_san, expected_san)
+        self.assertEqual(replay_game.board.get_board_snapshot(), expected_snapshot)
+        self.assertEqual(replay_game.current_turn, expected_turn)
+        return replay_game
+
     def test_export_notation_contains_recorded_san_moves(self):
         """Exported notation should include SAN moves in order."""
         self.game.make_move("e2", "e4")
@@ -882,7 +898,6 @@ class TestNotationPersistence(unittest.TestCase):
         self.assertIsInstance(notation_moves, list)
         self.assertEqual(notation_moves, ["e4", "e5", "Nf3"])
 
-    @unittest.skip("TODO: Implement load_notation replay logic")
     def test_export_import_round_trip_restores_state_and_history(self):
         """Loading exported notation should recreate board state and SAN history."""
         self.game.make_move("e2", "e4")
@@ -920,6 +935,128 @@ class TestNotationPersistence(unittest.TestCase):
         self.assertEqual(replay_e5.type, expected_e5.type)
         self.assertEqual(replay_f3.type, expected_f3.type)
         self.assertEqual(replay_c6.type, expected_c6.type)
+
+    def test_load_notation_rejects_non_list_input(self):
+        """load_notation should validate input shape and item type."""
+        with self.assertRaises(ValueError):
+            self.game.load_notation("e4")
+
+        with self.assertRaises(ValueError):
+            self.game.load_notation(["e4", 123])
+
+    def test_load_notation_replays_pawn_capture_sequence(self):
+        """Replay should preserve pawn-capture SAN and final board state."""
+        self.game.make_move("e2", "e4")
+        self.game.make_move("d7", "d5")
+        self.game.make_move("e4", "d5")
+
+        replay_game = self._assert_replay_matches_current_game()
+        self.assertIn("exd5", replay_game.export_notation())
+        piece_on_d5 = replay_game.board.get_piece_at("d5")
+        self.assertIsNotNone(piece_on_d5)
+        self.assertEqual(piece_on_d5.type, "P")
+        self.assertEqual(piece_on_d5.color, COLOR["white"])
+
+    def test_load_notation_replays_en_passant_sequence(self):
+        """Replay should support SAN-lite en passant with 'e.p.' suffix."""
+        self.game.make_move("e2", "e4")
+        self.game.make_move("a7", "a6")
+        self.game.make_move("e4", "e5")
+        self.game.make_move("d7", "d5")
+        self.game.make_move("e5", "d6")
+
+        replay_game = self._assert_replay_matches_current_game()
+        self.assertIn("exd6 e.p.", replay_game.export_notation())
+        self.assertIsNotNone(replay_game.board.get_piece_at("d6"))
+        self.assertIsNone(replay_game.board.get_piece_at("d5"))
+
+    def test_strip_san_suffixes_removes_ep_and_trailing_spaces(self):
+        """SAN stripping should normalize en-passant notation for replay parsing."""
+        clean_san, e_p_flag, promotion_type = self.game._strip_san_suffixes("exd6 e.p.")
+
+        self.assertEqual(clean_san, "exd6")
+        self.assertTrue(e_p_flag)
+        self.assertIsNone(promotion_type)
+
+    def test_load_notation_replays_castling_sequence(self):
+        """Replaying SAN that includes castling should restore king/rook squares."""
+        # Build a legal kingside-castling sequence for white.
+        self.game.make_move("e2", "e4")
+        self.game.make_move("e7", "e5")
+        self.game.make_move("g1", "f3")
+        self.game.make_move("b8", "c6")
+        self.game.make_move("f1", "e2")
+        self.game.make_move("g8", "f6")
+        self.game.make_move("e1", "g1")
+
+        notation_moves = self.game.export_notation()
+        expected_san = [entry["san"] for entry in self.game.move_history]
+
+        replay_game = Game()
+        replay_game.load_notation(notation_moves)
+
+        replay_san = [entry["san"] for entry in replay_game.move_history]
+        self.assertEqual(replay_san, expected_san)
+        self.assertIn("O-O", replay_san)
+
+        white_king = replay_game.board.get_piece_at("g1")
+        white_rook = replay_game.board.get_piece_at("f1")
+        self.assertIsNotNone(white_king)
+        self.assertIsNotNone(white_rook)
+        self.assertEqual(white_king.type, "K")
+        self.assertEqual(white_rook.type, "R")
+
+    def test_load_notation_replays_queenside_castling_sequence(self):
+        """Replaying SAN with queenside castling should restore king/rook squares."""
+        self.game.make_move("d2", "d4")
+        self.game.make_move("d7", "d5")
+        self.game.make_move("b1", "c3")
+        self.game.make_move("b8", "c6")
+        self.game.make_move("c1", "f4")
+        self.game.make_move("g8", "f6")
+        self.game.make_move("d1", "d2")
+        self.game.make_move("e7", "e6")
+        self.game.make_move("e1", "c1")
+
+        replay_game = self._assert_replay_matches_current_game()
+        self.assertIn("O-O-O", replay_game.export_notation())
+        white_king = replay_game.board.get_piece_at("c1")
+        white_rook = replay_game.board.get_piece_at("d1")
+        self.assertIsNotNone(white_king)
+        self.assertIsNotNone(white_rook)
+        self.assertEqual(white_king.type, "K")
+        self.assertEqual(white_rook.type, "R")
+
+    def test_load_notation_replays_promotion_capture_sequence(self):
+        """Replay should preserve SAN-lite capture promotion notation."""
+        self.game.make_move("a2", "a4")
+        self.game.make_move("h7", "h5")
+        self.game.make_move("a4", "a5")
+        self.game.make_move("h5", "h4")
+        self.game.make_move("a5", "a6")
+        self.game.make_move("h4", "h3")
+        self.game.make_move("a6", "b7")
+        self.game.make_move("h3", "g2")
+        self.game.make_move("b7", "a8", promotion_choice="Q")
+
+        replay_game = self._assert_replay_matches_current_game()
+        last_san = replay_game.export_notation()[-1]
+        self.assertIn("=Q", last_san)
+        promoted_piece = replay_game.board.get_piece_at("a8")
+        self.assertIsNotNone(promoted_piece)
+        self.assertEqual(promoted_piece.type, "Q")
+        self.assertEqual(promoted_piece.color, COLOR["white"])
+
+    def test_load_notation_replays_checkmate_suffix(self):
+        """Replay should parse SAN-lite '#' suffix and preserve game-over state."""
+        self.game.make_move("f2", "f3")
+        self.game.make_move("e7", "e5")
+        self.game.make_move("g2", "g4")
+        self.game.make_move("d8", "h4")
+
+        replay_game = self._assert_replay_matches_current_game()
+        self.assertTrue(replay_game.export_notation()[-1].endswith("#"))
+        self.assertTrue(replay_game.game_over)
 
 
 class TestUndoRegression(unittest.TestCase):
@@ -1015,6 +1152,66 @@ class TestResetGame(unittest.TestCase):
         self.assertEqual(self.game.position_history, [])
         self.assertIsNone(self.game.last_move)
         self.assertEqual(self.game.move_history, [])
+
+
+class TestNotationReplayControls(unittest.TestCase):
+    def setUp(self):
+        # Build a short, legal move list we can replay.
+        builder = Game()
+        builder.make_move("e2", "e4")
+        builder.make_move("e7", "e5")
+        builder.make_move("g1", "f3")
+        builder.make_move("b8", "c6")
+
+        self.notation = builder.export_notation()
+        self.final_snapshot = builder.board.get_board_snapshot()
+
+        self.replay_game = Game()
+        self.initial_snapshot = self.replay_game.board.get_board_snapshot()
+        self.replay_game.load_notation(self.notation)
+
+        # Snapshot after first ply for next/previous assertions.
+        first_ply_game = Game()
+        first_ply_game.make_move("e2", "e4")
+        self.first_ply_snapshot = first_ply_game.board.get_board_snapshot()
+
+    def test_replay_start_resets_to_initial_position(self):
+        """replay_start should jump to move 0 initial board state."""
+        self.replay_game.replay_start()
+        self.assertEqual(self.replay_game.board.get_board_snapshot(), self.initial_snapshot)
+
+    def test_replay_end_restores_final_position(self):
+        """replay_end should jump to final board state from notation replay."""
+        self.replay_game.replay_start()
+        self.replay_game.replay_end()
+        self.assertEqual(self.replay_game.board.get_board_snapshot(), self.final_snapshot)
+
+    def test_replay_next_advances_one_ply(self):
+        """replay_next should advance one move from the start position."""
+        self.replay_game.replay_start()
+        self.replay_game.replay_next()
+        self.assertEqual(self.replay_game.board.get_board_snapshot(), self.first_ply_snapshot)
+
+    def test_replay_previous_moves_back_one_ply(self):
+        """replay_previous should move one ply backward from final state."""
+        self.replay_game.replay_end()
+        self.replay_game.replay_previous()
+
+        expected = Game()
+        expected.make_move("e2", "e4")
+        expected.make_move("e7", "e5")
+        expected.make_move("g1", "f3")
+        self.assertEqual(self.replay_game.board.get_board_snapshot(), expected.board.get_board_snapshot())
+
+    def test_replay_navigation_is_clamped_at_bounds(self):
+        """Repeated previous/next at bounds should be safe and stable."""
+        self.replay_game.replay_start()
+        self.replay_game.replay_previous()
+        self.assertEqual(self.replay_game.board.get_board_snapshot(), self.initial_snapshot)
+
+        self.replay_game.replay_end()
+        self.replay_game.replay_next()
+        self.assertEqual(self.replay_game.board.get_board_snapshot(), self.final_snapshot)
 
 
 if __name__ == "__main__":

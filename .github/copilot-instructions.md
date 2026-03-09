@@ -2,6 +2,14 @@
 
 ## Project Type: Python Project for Learning
 
+## Current Status Snapshot
+
+- Core chess engine rules are implemented (including castling, en passant, promotion, draw rules, and undo).
+- SAN-lite notation export/import is implemented and tested.
+- Replay controls API (`replay_start`, `replay_next`, `replay_previous`, `replay_end`) is the current in-progress feature.
+- Current test status: `88 passed, 5 failed`.
+- The 5 failing tests are intentional TDD tests for the replay-controls API.
+
 ### Completed Steps:
 
 - [x] Verify that the copilot-instructions.md file in the .github directory is created.
@@ -26,6 +34,7 @@
 	- Project structure verified
 	- No compilation needed for Python
 	- Ready to run with: python src/main.py
+	- Tests run with: python -m unittest discover -s src/tests
 
 - [x] Ensure Documentation is Complete
 	- README.md created with setup and running instructions
@@ -44,9 +53,15 @@
 ```
 Simple Chess/
 ├── src/
+│   ├── ai/
+│   ├── game/
+│   ├── gui/
+│   ├── tests/
+│   ├── utils/
 │   └── main.py          # Main entry point
 ├── .github/
 │   └── copilot-instructions.md  # This file
+├── DESIGN.md
 ├── requirements.txt     # Project dependencies
 ├── .gitignore           # Git ignore rules
 └── README.md            # Project documentation

@@ -42,7 +42,7 @@ class TestFiftyMoveRule(unittest.TestCase):
         self.assertEqual(self.game.halfmove_clock, 0)
 
     def test_fifty_move_rule_triggers_draw(self):
-        """Insufficient material should end game before fifty-move rule in this setup."""
+        """With K+B vs K+N, draw should come from fifty-move rule."""
         self._clear_board()
         
         white_king = King(COLOR["white"], "e1")
@@ -82,14 +82,13 @@ class TestFiftyMoveRule(unittest.TestCase):
             if self.game.game_over:
                 break
         
-        # Game should end as draw, and current engine priority reports
-        # insufficient material before fifty-move in this position family.
+        # Game should end as draw via fifty-move rule.
         self.assertTrue(self.game.game_over)
         self.assertTrue(self.game.is_draw)
-        self.assertEqual(self.game.draw_reason, "Insufficient material")
+        self.assertEqual(self.game.draw_reason, "Fifty-move rule")
 
     def test_fifty_move_rule_disabled(self):
-        """With fifty-move disabled, game still may end by other draw rules."""
+        """With fifty-move disabled, K+B vs K+N should not auto-draw."""
         game_no_fifty = Game(enable_fifty_move_rule=False)
         
         # Clear board
@@ -127,11 +126,10 @@ class TestFiftyMoveRule(unittest.TestCase):
             game_no_fifty.make_move("f6", "g8")
             game_no_fifty.position_history = []
         
-        # Current engine behavior: this material setup draws by insufficient material,
-        # independent of the fifty-move toggle.
-        self.assertTrue(game_no_fifty.game_over)
-        self.assertTrue(game_no_fifty.is_draw)
-        self.assertEqual(game_no_fifty.draw_reason, "Insufficient material")
+        # Fifty-move is disabled and this material is not auto-insufficient.
+        self.assertFalse(game_no_fifty.game_over)
+        self.assertFalse(game_no_fifty.is_draw)
+        self.assertIsNone(game_no_fifty.draw_reason)
 
 
 class TestThreefoldRepetition(unittest.TestCase):
@@ -245,6 +243,22 @@ class TestInsufficientMaterial(unittest.TestCase):
         self.game.board.set_piece_at("e8", black_king)
         
         self.assertTrue(self.game.check_insufficient_material())
+
+        def test_king_bishop_vs_king_knight_is_sufficient(self):
+            """Test K+B vs K+N is sufficient material (not auto-draw)."""
+            self._clear_board()
+
+            white_king = King(COLOR["white"], "e1")
+            white_bishop = Bishop(COLOR["white"], "d2")
+            black_king = King(COLOR["black"], "e8")
+            black_knight = Knight(COLOR["black"], "g7")
+
+            self.game.board.set_piece_at("e1", white_king)
+            self.game.board.set_piece_at("d2", white_bishop)
+            self.game.board.set_piece_at("e8", black_king)
+            self.game.board.set_piece_at("g7", black_knight)
+
+            self.assertFalse(self.game.check_insufficient_material())
 
     def test_king_rook_vs_king_is_sufficient(self):
         """Test K+R vs K has sufficient material (can mate)."""
