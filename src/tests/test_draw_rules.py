@@ -244,21 +244,21 @@ class TestInsufficientMaterial(unittest.TestCase):
         
         self.assertTrue(self.game.check_insufficient_material())
 
-        def test_king_bishop_vs_king_knight_is_sufficient(self):
-            """Test K+B vs K+N is sufficient material (not auto-draw)."""
-            self._clear_board()
+    def test_king_bishop_vs_king_knight_is_sufficient(self):
+        """Test K+B vs K+N is sufficient material (not auto-draw)."""
+        self._clear_board()
 
-            white_king = King(COLOR["white"], "e1")
-            white_bishop = Bishop(COLOR["white"], "d2")
-            black_king = King(COLOR["black"], "e8")
-            black_knight = Knight(COLOR["black"], "g7")
+        white_king = King(COLOR["white"], "e1")
+        white_bishop = Bishop(COLOR["white"], "d2")
+        black_king = King(COLOR["black"], "e8")
+        black_knight = Knight(COLOR["black"], "g7")
 
-            self.game.board.set_piece_at("e1", white_king)
-            self.game.board.set_piece_at("d2", white_bishop)
-            self.game.board.set_piece_at("e8", black_king)
-            self.game.board.set_piece_at("g7", black_knight)
+        self.game.board.set_piece_at("e1", white_king)
+        self.game.board.set_piece_at("d2", white_bishop)
+        self.game.board.set_piece_at("e8", black_king)
+        self.game.board.set_piece_at("g7", black_knight)
 
-            self.assertFalse(self.game.check_insufficient_material())
+        self.assertFalse(self.game.check_insufficient_material())
 
     def test_king_rook_vs_king_is_sufficient(self):
         """Test K+R vs K has sufficient material (can mate)."""

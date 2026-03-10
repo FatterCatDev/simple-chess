@@ -95,7 +95,10 @@ class GameController:
     def replay_start(self):
         """Start replaying the game from the beginning."""
         try:
-            notation = self.game.export_notation()
+            if self.game.replay_notation:
+                notation = self.game.replay_notation
+            else:
+                notation = self.game.export_notation()
             if not notation:
                 raise ValueError("No moves available to replay.")
             self.history_list = notation.copy()  # Store the full move list for GUI display

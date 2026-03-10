@@ -43,9 +43,11 @@ class Game:
         
         piece = self.board.get_piece_at(from_position)
         captured_piece = self.board.get_piece_at(to_position)
-        needs_disambiguation = self._if_san_disambiguation_needed(piece.type, to_position) if not castled else False # Determine if SAN disambiguation is needed for the move (not needed for castling)
         if piece is None:
             raise ValueError(f"No piece at position {from_position} to move.")
+        
+        needs_disambiguation = self._if_san_disambiguation_needed(piece.type, to_position) if not castled else False # Determine if SAN disambiguation is needed for the move (not needed for castling)
+
         
         if piece.color != self.current_turn:
             raise ValueError(f"It's {self.current_turn}'s turn. Cannot move {piece.color}'s piece.")
@@ -655,8 +657,6 @@ class Game:
 
     def replay_next(self): # Replay the next move in the notation list.
         """Replay the next move in the notation list."""
-        if not self.replay_active:
-            raise ValueError("Replay mode is not active. Cannot replay next move.")
         if self.replay_index >= len(self.replay_notation):
             return  # Already at the end of the notation list, cannot go forward
         if not self.replay_active:
@@ -666,10 +666,10 @@ class Game:
 
     def replay_previous(self): # Replay the previous move in the notation list.
         """Replay the previous move in the notation list."""
-        if not self.replay_active:
-            raise ValueError("Replay mode is not active. Cannot replay previous move.")
         if not self.replay_notation:
             return  # No replay notation loaded, cannot go back
+        if not self.replay_active:
+            self.replay_start(self.replay_notation)  # Reset the game to the initial state of the replay
         if self.replay_index <= 0:
             return  # Already at the beginning of the notation list, cannot go back further
         target_index = self.replay_index - 1  # Move to the previous move in the replay notation

@@ -1231,6 +1231,32 @@ class TestNotationReplayControls(unittest.TestCase):
         self.replay_game.replay_next()
         self.assertEqual(self.replay_game.board.get_board_snapshot(), self.first_ply_snapshot)
 
+    def test_replay_next_auto_starts_when_inactive(self):
+        """replay_next should auto-start replay when notation exists but replay is inactive."""
+        self.replay_game.replay_active = False
+        self.replay_game.replay_notation = self.notation.copy()
+        self.replay_game.replay_index = 0
+
+        self.replay_game.replay_next()
+
+        self.assertTrue(self.replay_game.replay_active)
+        self.assertEqual(self.replay_game.replay_index, 1)
+        self.assertEqual(self.replay_game.board.get_board_snapshot(), self.first_ply_snapshot)
+
+    def test_replay_next_auto_start_resets_from_non_replay_board_state(self):
+        """Auto-start should reset from any stale board state before replaying next move."""
+        self.replay_game.replay_active = False
+        self.replay_game.replay_notation = self.notation.copy()
+        self.replay_game.replay_index = 0
+
+        # Corrupt board state intentionally to prove replay_next rebuilds from replay notation.
+        self.replay_game.board.remove_piece_at("e2")
+
+        self.replay_game.replay_next()
+
+        self.assertEqual(self.replay_game.replay_index, 1)
+        self.assertEqual(self.replay_game.board.get_board_snapshot(), self.first_ply_snapshot)
+
     def test_replay_previous_moves_back_one_ply(self):
         """replay_previous should move one ply backward from final state."""
         self.replay_game.replay_end()
