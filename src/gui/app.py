@@ -104,6 +104,7 @@ style.configure(
 
 def refresh_board():
     state = game_controller.get_state()
+    move_list = state["move_list"]
     selected_square = state["selected_square"]
     legal_moves = state["legal_moves"]
     for square, button in square_buttons.items():
@@ -125,6 +126,21 @@ def refresh_board():
         else:
             sq_style = "WhiteSquare.TButton" if (int(square[1]) + ord(square[0]) - ord('a')) % 2 == 0 else "BlackSquare.TButton"
             button.config(style=sq_style)
+
+    history_listbox.delete(0, "end")
+
+    if not move_list:
+        history_listbox.insert("end", "No moves yet.")
+    else:
+        for i in range(0, len(move_list), 2):
+            move_number = (i // 2) + 1
+            white_move = move_list[i]
+            black_move = move_list[i+1] if i + 1 < len(move_list) else ""
+            if black_move:
+                line = f"{move_number}. {white_move}, {black_move}"
+            else:
+                line = f"{move_number}. {white_move}"
+            history_listbox.insert("end", line)
 
 def handle_click(square):
     game_controller.on_square_click(square)
@@ -155,10 +171,29 @@ def update_status_label():
 
     main.label.config(text=" | ".join(parts))
 
-#--------------------------------Build the chess board UI--------------------------------
+#--------------------------------Build the chess board and history UI--------------------------------
 
 container = tk.Frame(main, bg=GLOBAL_BUTTON_STYLE["primary"])
 container.pack(fill="both", expand=True)
+main_content = tk.Frame(container, bg=GLOBAL_BUTTON_STYLE["primary"])
+main_content.pack(fill="both", expand=True)
+main_content.grid_rowconfigure(0, weight=1)
+main_content.grid_columnconfigure(0, weight=1)
+main_content.grid_columnconfigure(1, weight=0)  # History column does not expand
+
+left_frame = tk.Frame(main_content, bg=GLOBAL_BUTTON_STYLE["primary"])
+left_frame.grid(row=0, column=0, sticky="nsew")
+right_frame = tk.Frame(main_content, bg=GLOBAL_BUTTON_STYLE["sidebar_bg"], width=220)
+right_frame.grid(row=0, column=1, sticky="ns")
+right_frame.grid_propagate(False)  # keep exact width/height
+
+tk.Label(right_frame, text="Move History", font=("Helvetica", 14), bg=GLOBAL_BUTTON_STYLE["sidebar_bg"], fg="#FFF").pack(pady=10)
+history_scrollbar = tk.Scrollbar(right_frame, orient="vertical", bg=GLOBAL_BUTTON_STYLE["sidebar_bg"], troughcolor=GLOBAL_BUTTON_STYLE["sidebar_bg"], highlightthickness=0, bd=0)
+history_listbox = tk.Listbox(right_frame, yscrollcommand=history_scrollbar.set, bg=GLOBAL_BUTTON_STYLE["sidebar_bg"], fg="#FFF", selectbackground=GLOBAL_BUTTON_STYLE["hovered"], highlightthickness=0, bd=0)
+history_scrollbar.config(command=history_listbox.yview)
+history_scrollbar.pack(side="right", fill="y", padx=(0, 5), pady=5)
+history_listbox.pack(side="left", fill="both", expand=True, padx=5, pady=5)
+history_listbox.insert("end", "No moves yet.")
 
 square_buttons = {}  # Dictionary to hold references to the square buttons
 game = Game()  # Initialize the game
@@ -169,7 +204,7 @@ tile = 64
 piece_size = 60
 board_size = tile * 8
 
-board_frame = tk.Frame(container, width=board_size, height=board_size, bg=GLOBAL_BUTTON_STYLE["primary"])
+board_frame = tk.Frame(left_frame, width=board_size, height=board_size, bg=GLOBAL_BUTTON_STYLE["primary"])
 board_frame.place(relx=0.5, rely=0.5, anchor="center")
 board_frame.grid_propagate(False)  # keep exact width/height
 
@@ -194,8 +229,8 @@ for i in range(8):
 
 #-------------------------------Replayer Controls--------------------------------
 
-controls = tk.Frame(container, bg=GLOBAL_BUTTON_STYLE["primary"])
-controls.pack(pady=7)
+controls = tk.Frame(left_frame, bg=GLOBAL_BUTTON_STYLE["primary"])
+controls.place(relx=0.5, rely=1.0, anchor="s", y=-10)  # Place the controls at the bottom of the left frame
 replay_button_stype = ttk.Style()
 replay_button_stype.configure("Replay.TButton", background=GLOBAL_BUTTON_STYLE["secondary"], relief="flat", padding=5)
 replay_button_stype.map("Replay.TButton", background=[("active", GLOBAL_BUTTON_STYLE["hovered"])], foreground=[("active", "#000")])  # Set the background color for replay buttons when active to a medium gray and the text color to black

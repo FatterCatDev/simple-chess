@@ -43,4 +43,5 @@ GLOBAL_BUTTON_STYLE = {
     "hovered": "#75689B",
     "selected": "#5D84CA",
     "legal_move": "#90EE90",
+    "sidebar_bg": "#2C2542",
 }
