@@ -707,5 +707,12 @@ class Game:
             if self.rules.is_valid_move(position, to_position, self.last_move):
                 if not self.would_be_in_check_after_move(position, to_position):
                     legal_moves.append(to_position)
-        
+        if piece.type == "K":
+            rank = "1" if piece.color == COLOR["white"] else "8"
+            if position == f"e{rank}":
+                if self.can_castle(piece.color, "kingside"):
+                    legal_moves.append(f"g{rank}")
+                if self.can_castle(piece.color, "queenside"):
+                    legal_moves.append(f"c{rank}")
+
         return legal_moves

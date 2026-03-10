@@ -88,6 +88,7 @@ class GameController:
 
     def on_square_click(self, position):
         """Handle a square click event from the GUI."""
+        self.last_error = None  # Clear last error on new action
         if not self.selected_square:
             if self.select_square(position):
                 self.selected_square = position

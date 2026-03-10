@@ -35,10 +35,26 @@ menu.add_cascade(label="File", menu=menu_0)
 menu_1 = tk.Menu(menu, tearoff=0)
 menu.add_cascade(label="Edit", menu=menu_1)
 
-style.configure("WhiteSquare.TButton", background=GLOBAL_BUTTON_STYLE["secondary"], relief="flat") # Set the background color for white squares to a light gray and remove the border relief
-style.configure("BlackSquare.TButton", background=GLOBAL_BUTTON_STYLE["tertiary"], relief="flat") # Set the background color for black squares to a dark gray and remove the border relief
-style.map("WhiteSquare.TButton", background=[("active", GLOBAL_BUTTON_STYLE["hovered"])], foreground=[("active", "#000")]) # Set the background color for white squares when active to a medium gray and the text color to black
-style.map("BlackSquare.TButton", background=[("active", GLOBAL_BUTTON_STYLE["hovered"])], foreground=[("active", "#000")]) # Set the background color for black squares when active to a medium gray and the text color to black
+style.configure(
+    "WhiteSquare.TButton", 
+    background=GLOBAL_BUTTON_STYLE["secondary"], 
+    relief="flat"
+    ) # Set the background color for white squares to a light gray and remove the border relief
+style.configure(
+    "BlackSquare.TButton", 
+    background=GLOBAL_BUTTON_STYLE["tertiary"], 
+    relief="flat"
+    ) # Set the background color for black squares to a dark gray and remove the border relief
+style.map(
+    "WhiteSquare.TButton", 
+    background=[("active", GLOBAL_BUTTON_STYLE["hovered"])], 
+    foreground=[("active", "#000")]
+    ) # Set the background color for white squares when active to a medium gray and the text color to black
+style.map(
+    "BlackSquare.TButton", 
+    background=[("active", GLOBAL_BUTTON_STYLE["hovered"])], 
+    foreground=[("active", "#000")]
+    ) # Set the background color for black squares when active to a medium gray and the text color to black
 
 #--------------------------------Helpers-------------------------------------------------
 
@@ -65,10 +81,26 @@ def blend(hex1, hex2, t):
     b = round(b1 + (b2 - b1) * t)
     return f"#{r:02x}{g:02x}{b:02x}"
 
-style.configure("SelectedLight.TButton", background=blend(GLOBAL_BUTTON_STYLE["selected"], GLOBAL_BUTTON_STYLE["secondary"], 0.5), relief="flat") # Set the background color for selected squares to a medium gray and remove the border relief
-style.configure("SelectedDark.TButton", background=blend(GLOBAL_BUTTON_STYLE["selected"], GLOBAL_BUTTON_STYLE["tertiary"], 0.5), relief="flat") # Set the background color for selected squares to a medium gray and remove the border relief
-style.configure("LegalMoveLight.TButton", background=blend(GLOBAL_BUTTON_STYLE["legal_move"], GLOBAL_BUTTON_STYLE["secondary"], 0.7), relief="flat") # Set the background color for legal move squares to light green and remove the border relief
-style.configure("LegalMoveDark.TButton", background=blend(GLOBAL_BUTTON_STYLE["legal_move"], GLOBAL_BUTTON_STYLE["tertiary"], 0.7), relief="flat") # Set the background color for legal move squares to light green and remove the border relief
+style.configure(
+    "SelectedLight.TButton", 
+    background=blend(GLOBAL_BUTTON_STYLE["selected"], GLOBAL_BUTTON_STYLE["secondary"], 0.5), 
+    relief="flat"
+    ) # Set the background color for selected squares to a medium gray and remove the border relief
+style.configure(
+    "SelectedDark.TButton", 
+    background=blend(GLOBAL_BUTTON_STYLE["selected"], GLOBAL_BUTTON_STYLE["tertiary"], 0.5), 
+    relief="flat"
+    ) # Set the background color for selected squares to a medium gray and remove the border relief
+style.configure(
+    "LegalMoveLight.TButton", 
+    background=blend(GLOBAL_BUTTON_STYLE["legal_move"], GLOBAL_BUTTON_STYLE["secondary"], 0.7), 
+    relief="flat"
+    ) # Set the background color for legal move squares to light green and remove the border relief
+style.configure(
+    "LegalMoveDark.TButton", 
+    background=blend(GLOBAL_BUTTON_STYLE["legal_move"], GLOBAL_BUTTON_STYLE["tertiary"], 0.7), 
+    relief="flat"
+    ) # Set the background color for legal move squares to light green and remove the border relief
 
 def refresh_board():
     state = game_controller.get_state()
@@ -97,8 +129,27 @@ def refresh_board():
 def handle_click(square):
     game_controller.on_square_click(square)
     refresh_board()
+    update_status_label()
+
+def update_status_label():
     game_state = game_controller.get_state()
-    main.label.config(text=f"Turn: {game_state['current_turn']} | Selected: {game_state['selected_square']}")
+    selected_square = game_state["selected_square"] if game_state["selected_square"] else "-"
+    parts = [
+        f"Turn: {game_state['current_turn']}",
+        f"Selected: {selected_square}",
+    ]
+
+    if game_state["is_draw"]:
+        parts.append(f"Draw: {game_state['draw_reason'] or 'draw'}")
+    elif game_state["game_over"]:
+        parts.append(f"Checkmate: {game_state['current_turn']} wins")
+    elif game_state["is_in_check"]:
+        parts.append(f"Check")
+
+    if game_state["last_error"]:
+        parts.append(f"Error: {game_state['last_error']}")
+
+    main.label.config(text=" | ".join(parts))
 
 #--------------------------------Build the chess board UI--------------------------------
 
@@ -148,8 +199,7 @@ replay_button_stype.map("Replay.TButton", background=[("active", GLOBAL_BUTTON_S
 def handle_undo():
     game_controller.undo()
     refresh_board()
-    game_state = game_controller.get_state()
-    main.label.config(text=f"Turn: {game_state['current_turn']} | Selected: {game_state['selected_square']}")
+    update_status_label()
 
 def handle_reset():
     game_controller.reset()
