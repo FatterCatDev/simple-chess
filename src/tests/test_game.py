@@ -460,6 +460,45 @@ class TestCastling(unittest.TestCase):
 
         self.assertIn(("e1", "g1"), moves)
 
+    def test_get_legal_moves_for_king_includes_castling_squares(self):
+        """King legal-move generation should include castling destinations."""
+        self._clear_board()
+
+        white_king = King(COLOR["white"], "e1")
+        white_rook_k = Rook(COLOR["white"], "h1")
+        white_rook_q = Rook(COLOR["white"], "a1")
+        black_king = King(COLOR["black"], "a8")
+
+        self.game.board.set_piece_at("e1", white_king)
+        self.game.board.set_piece_at("h1", white_rook_k)
+        self.game.board.set_piece_at("a1", white_rook_q)
+        self.game.board.set_piece_at("a8", black_king)
+        self.game.current_turn = COLOR["white"]
+
+        legal_moves = self.game.get_legal_moves("e1")
+
+        self.assertIn("g1", legal_moves)
+        self.assertIn("c1", legal_moves)
+
+    def test_get_legal_moves_for_king_excludes_castling_when_path_blocked(self):
+        """Castling destinations should be omitted when pieces block the path."""
+        self._clear_board()
+
+        white_king = King(COLOR["white"], "e1")
+        white_rook = Rook(COLOR["white"], "h1")
+        white_blocker = Bishop(COLOR["white"], "f1")
+        black_king = King(COLOR["black"], "a8")
+
+        self.game.board.set_piece_at("e1", white_king)
+        self.game.board.set_piece_at("h1", white_rook)
+        self.game.board.set_piece_at("f1", white_blocker)
+        self.game.board.set_piece_at("a8", black_king)
+        self.game.current_turn = COLOR["white"]
+
+        legal_moves = self.game.get_legal_moves("e1")
+
+        self.assertNotIn("g1", legal_moves)
+
 
 class TestEnPassantExecution(unittest.TestCase):
     def setUp(self):

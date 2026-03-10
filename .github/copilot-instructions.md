@@ -7,7 +7,8 @@
 - Core chess engine rules are implemented (including castling, en passant, promotion, draw rules, and undo).
 - SAN-lite notation export/import is implemented and tested.
 - Replay controls API (`replay_start`, `replay_next`, `replay_previous`, `replay_end`) is implemented.
-- Current test status: `93 passed, 0 failed`.
+- Tkinter GUI prototype is implemented (board rendering, piece sprites, selection/move flow, legal move highlighting, undo/reset).
+- Current test status: `95 passed, 0 failed`.
 
 ### Completed Steps:
 

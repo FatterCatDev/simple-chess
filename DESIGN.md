@@ -22,7 +22,7 @@ A functional chess game with the following requirements:
 ## 2. Core Features
 
 ### 2.1 MVP (Minimum Viable Product)
-- [ ] Display a chess board in a Tkinter window
+- [x] Display a chess board in a Tkinter window
 - [x] Move pieces with standard chess rules
 - [x] Human vs Human gameplay (core logic ready)
 - [x] Game status logic (check, checkmate, stalemate, draw rules)
@@ -46,7 +46,9 @@ A functional chess game with the following requirements:
 - [x] Replay controls API (start/previous/next/end) implemented
 - [x] Unit tests for game/rules/draw/notation import-export are in place
 - [x] Replay-controls tests are implemented and passing
-- [x] Current test run: 93 passed, 0 failed
+- [x] Tkinter GUI board prototype is implemented (piece sprites, selection, legal highlights)
+- [x] GUI controls implemented: undo and reset
+- [x] Current test run: 95 passed, 0 failed
 
 ### 2.3 Future Features
 - [ ] AI opponent (Stockfish integration)
@@ -210,15 +212,15 @@ The window will display the chess board and game interface with no command-line 
 
 ### 7.4 Phase 3: GUI & User Interaction
 
-- [ ] Create Tkinter main window
-- [ ] Draw chess board (8x8 grid with lines)
-- [ ] Draw chess pieces using Unicode symbols
-- [ ] Implement click detection on squares
-- [ ] Implement piece selection and highlighting
-- [ ] Implement valid move highlighting
-- [ ] Implement move execution via GUI clicks
-- [ ] Add status bar (current turn, game status)
-- [ ] Add buttons (New Game, Undo, Reset)
+- [x] Create Tkinter main window
+- [x] Draw chess board (8x8 square grid)
+- [x] Draw chess pieces using sprite assets (PNG)
+- [x] Implement click detection on squares
+- [x] Implement piece selection and highlighting
+- [x] Implement valid move highlighting
+- [x] Implement move execution via GUI clicks
+- [x] Add status bar (current turn, selected square, state tags)
+- [x] Add buttons (Undo, Reset)
 - [ ] Add Rules/Help dialog
 - [ ] Add game over dialog (Checkmate/Stalemate)
 - [ ] Add pawn promotion dialog
@@ -256,7 +258,8 @@ Project structure:
 src/
 ├── main.py           # Entry point
 ├── gui/
-│   └── chess_app.py  # Tkinter GUI
+│   ├── app.py         # Tkinter GUI app
+│   └── controller.py  # GUI event/controller layer
 ├── game/
 │   ├── board.py      # Board representation
 │   ├── piece.py      # Piece classes

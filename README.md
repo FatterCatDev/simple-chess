@@ -9,7 +9,13 @@ A learning project for building a chess game in Python.
 - SAN-lite notation is implemented for move history export/import (`export_notation`, `load_notation`).
 - Notation replay-to-final-state is covered by tests, including captures, castling, promotion, en passant suffix parsing, and checkmate suffix parsing.
 - Step-by-step replay controls are implemented (`replay_start`, `replay_next`, `replay_previous`, `replay_end`).
-- Test status: `93 passed, 0 failed`.
+- Tkinter GUI prototype is implemented with:
+   - centered 8x8 board
+   - piece sprite rendering from PNG assets
+   - click-to-select / click-to-move interaction
+   - legal move highlighting (including castling destinations)
+   - status banner, undo, and reset controls
+- Test status: `95 passed, 0 failed`.
 
 ## Project Structure
 
@@ -51,6 +57,14 @@ simple-chess/
 
 ```bash
 python src/main.py
+```
+
+### Running the GUI Prototype
+
+```bash
+# PowerShell (Windows)
+$env:PYTHONPATH="src"
+python -m gui.app
 ```
 
 ### Running Tests
