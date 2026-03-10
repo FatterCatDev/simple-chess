@@ -8,6 +8,7 @@
 - SAN-lite notation export/import is implemented and tested.
 - Replay controls API (`replay_start`, `replay_next`, `replay_previous`, `replay_end`) is implemented.
 - Tkinter GUI prototype is implemented (board rendering, piece sprites, selection/move flow, legal move highlighting, undo/reset).
+- Replay UI is fully functional: static history display, position highlighting during navigation, move restrictions mid-replay.
 - Current test status: `95 passed, 0 failed`.
 
 ### Completed Steps:

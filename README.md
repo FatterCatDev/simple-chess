@@ -15,6 +15,9 @@ A learning project for building a chess game in Python.
    - click-to-select / click-to-move interaction
    - legal move highlighting (including castling destinations)
    - status banner, undo, and reset controls
+   - replay navigation controls (|< < > >|)
+   - move history sidebar with replay position highlighting
+   - static history display during replay (content frozen, highlight moves)
 - Test status: `95 passed, 0 failed`.
 
 ## Project Structure

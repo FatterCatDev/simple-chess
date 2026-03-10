@@ -48,6 +48,10 @@ A functional chess game with the following requirements:
 - [x] Replay-controls tests are implemented and passing
 - [x] Tkinter GUI board prototype is implemented (piece sprites, selection, legal highlights)
 - [x] GUI controls implemented: undo and reset
+- [x] Replay controls implemented in GUI (|< < > >| buttons)
+- [x] Replay mode uses static history display (list content frozen during navigation)
+- [x] History listbox highlights current replay position during stepping
+- [x] Replay restriction: moves blocked mid-replay unless at final position
 - [x] Current test run: 95 passed, 0 failed
 
 ### 2.3 Future Features
@@ -75,6 +79,7 @@ This design allows for easy swapping of AI engines or game modes without affecti
 - **Game**: Manages game state, turn logic, and move validation
 - **StandardChessRules**: Piece movement and special-move legality checks
 - **GUI/ChessApp**: Tkinter window and user interface
+- **GameController**: Bridges GUI and game engine; maintains static history snapshot for UI display
 - **AIEngine** (Optional): Interface for chess bot integration (e.g., Stockfish)
 - **Notation Builder**: Generates move notation history from validated moves
 - **Notation Parser**: Reads stored notation and converts it into executable moves
@@ -111,6 +116,7 @@ Game state tracks:
 - Captured pieces
 - Notation move history
 - Replay cursor/index for step-by-step navigation
+- Static history snapshot for GUI display (decoupled from engine history during replay)
 
 ---
 
