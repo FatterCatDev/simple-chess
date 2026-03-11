@@ -1,10 +1,60 @@
 import os
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
+import ctypes
+from ctypes import wintypes
+import winreg
 from gui.controller import GameController
 from game.game import Game
 from PIL import Image, ImageTk
 from utils.constants import GLOBAL_BUTTON_STYLE
+
+
+def _windows_prefers_dark_app_mode() -> bool:
+    """Return True when Windows personalization says apps should use dark mode."""
+    try:
+        with winreg.OpenKey(
+            winreg.HKEY_CURRENT_USER,
+            r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize",
+        ) as key:
+            apps_use_light_theme, _ = winreg.QueryValueEx(key, "AppsUseLightTheme")
+            return int(apps_use_light_theme) == 0
+    except Exception:
+        # Keep current behavior on systems where personalization key is unavailable.
+        return True
+
+
+def _apply_dark_title_bar(window: tk.Tk) -> None:
+    try:
+        user32 = ctypes.WinDLL("user32", use_last_error=True)
+        dwmapi = ctypes.WinDLL("dwmapi", use_last_error=True)
+
+        user32.GetParent.argtypes = [wintypes.HWND]
+        user32.GetParent.restype = wintypes.HWND
+
+        dwm_set_window_attribute = dwmapi.DwmSetWindowAttribute
+        dwm_set_window_attribute.argtypes = [
+            wintypes.HWND,
+            wintypes.DWORD,
+            ctypes.c_void_p,
+            wintypes.DWORD,
+        ]
+        dwm_set_window_attribute.restype = ctypes.c_long
+
+        raw_hwnd = wintypes.HWND(window.winfo_id())
+        hwnd = user32.GetParent(raw_hwnd) or raw_hwnd
+
+        value = ctypes.c_int(1 if _windows_prefers_dark_app_mode() else 0)
+        # 20 works on most modern Windows builds, 19 is a fallback.
+        for attr in (20, 19):
+            dwm_set_window_attribute(
+                hwnd,
+                wintypes.DWORD(attr),
+                ctypes.byref(value),
+                wintypes.DWORD(ctypes.sizeof(value)),
+            )
+    except Exception:
+        pass
 
 def run_app():
 
@@ -13,11 +63,11 @@ def run_app():
 
     main = tk.Tk()
     main.title("Simple Chess")
-    main.label = tk.Label(main, text="New Game", font=("Helvetica", 16))
-    main.label.pack(pady=10)
     main.config(bg=GLOBAL_BUTTON_STYLE["primary"])
     main.geometry("800x700")
     main.update_idletasks()
+    _apply_dark_title_bar(main)
+    main.config(bg=GLOBAL_BUTTON_STYLE["primary"])
 
     geometryX = 0
     geometryY = 0
@@ -27,15 +77,39 @@ def run_app():
     style = ttk.Style(main)
     style.theme_use("clam")
 
-    menu = tk.Menu(main)
-    main.config(menu=menu)
-    menu_0 = tk.Menu(menu, tearoff=0)
-    menu_0.add_command(label="Save", command=lambda: handle_save())
-    menu_0.add_command(label="Load", command=lambda: handle_load())
-    menu_0.add_command(label="New", command=lambda: handle_new())
-    menu.add_cascade(label="File", menu=menu_0)
-    menu_1 = tk.Menu(menu, tearoff=0)
-    menu.add_cascade(label="Edit", menu=menu_1)
+    top_bar = tk.Frame(main, bg="#1f2933", height=30)
+    top_bar.pack(fill="x")
+    top_bar.pack_propagate(False)
+
+    main.label = tk.Label(main, text="New Game", font=("Helvetica", 16), bg=GLOBAL_BUTTON_STYLE["primary"], fg="#FFF")
+    main.label.pack(pady=10)
+
+    file_button = tk.Menubutton(
+        top_bar,
+        text="File",
+        bg="#1f2933",
+        fg="#ffffff",
+        activebackground=GLOBAL_BUTTON_STYLE["hovered"],
+        activeforeground="#000000",
+        relief="flat",
+        borderwidth=0,
+        padx=10,
+        pady=4,
+    )
+    file_button.pack(side="left", padx=(6, 2), pady=2)
+
+    file_menu = tk.Menu(
+        file_button,
+        tearoff=0,
+        bg="#1f2933",
+        fg="#ffffff",
+        activebackground=GLOBAL_BUTTON_STYLE["hovered"],
+        activeforeground="#000000",
+    )
+    file_menu.add_command(label="Save", command=lambda: handle_save())
+    file_menu.add_command(label="Load", command=lambda: handle_load())
+    file_menu.add_command(label="New", command=lambda: handle_new())
+    file_button.config(menu=file_menu)
 
     style.configure(
         "WhiteSquare.TButton", 
@@ -57,6 +131,22 @@ def run_app():
         background=[("active", GLOBAL_BUTTON_STYLE["hovered"])], 
         foreground=[("active", "#000")]
         ) # Set the background color for black squares when active to a medium gray and the text color to black
+
+    style.configure(
+        "History.Vertical.TScrollbar",
+        background=GLOBAL_BUTTON_STYLE["tertiary"],
+        troughcolor=GLOBAL_BUTTON_STYLE["sidebar_bg"],
+        arrowcolor="#ffffff",
+        bordercolor=GLOBAL_BUTTON_STYLE["sidebar_bg"],
+        darkcolor=GLOBAL_BUTTON_STYLE["tertiary"],
+        lightcolor=GLOBAL_BUTTON_STYLE["tertiary"],
+        relief="flat",
+    )
+    style.map(
+        "History.Vertical.TScrollbar",
+        background=[("active", GLOBAL_BUTTON_STYLE["hovered"])],
+        arrowcolor=[("active", "#000000")],
+    )
 
     #--------------------------------Helpers-------------------------------------------------
 
@@ -195,6 +285,37 @@ def run_app():
                 history_listbox.selection_set(row_index)
                 history_listbox.see(row_index)
 
+        update_history_scrollbar_visibility()
+
+    def update_history_scrollbar_visibility():
+        nonlocal history_scrollbar_visible
+
+        history_listbox.update_idletasks()
+        total_items = history_listbox.size()
+
+        visible_rows = 0
+        if total_items > 0:
+            first_bbox = history_listbox.bbox(0)
+            if first_bbox:
+                row_height = first_bbox[3]
+                if row_height > 0:
+                    visible_rows = max(1, history_listbox.winfo_height() // row_height)
+
+        if visible_rows <= 0:
+            try:
+                visible_rows = max(1, int(history_listbox.cget("height")))
+            except Exception:
+                visible_rows = 10
+
+        needs_scroll = total_items > visible_rows
+
+        if needs_scroll and not history_scrollbar_visible:
+            history_scrollbar.pack(side="right", fill="y", padx=(0, 5), pady=5)
+            history_scrollbar_visible = True
+        elif not needs_scroll and history_scrollbar_visible:
+            history_scrollbar.pack_forget()
+            history_scrollbar_visible = False
+
     def handle_click(square):
         selected = game_controller.selected_square
         is_promotion_attempt = False
@@ -228,6 +349,10 @@ def run_app():
         update_status_label()
 
     def update_status_label():
+        move_list = game_controller.get_state()["move_list"]
+        if not move_list:
+            main.label.config(text="New Game")
+            return
         color_name = {"W": "White", "B": "Black"}
         game_state = game_controller.get_state()
         selected_square = game_state["selected_square"] if game_state["selected_square"] else "-"
@@ -252,6 +377,42 @@ def run_app():
 
         main.label.config(text=" | ".join(parts))
 
+    def overlay_cancel_timers():
+        nonlocal overlay_fade_after_id, overlay_hide_after_id
+        if overlay_fade_after_id is not None:
+            main.after_cancel(overlay_fade_after_id)
+            overlay_fade_after_id = None
+        if overlay_hide_after_id is not None:
+            main.after_cancel(overlay_hide_after_id)
+            overlay_hide_after_id = None
+
+    def fade_step(step, total_steps):
+        nonlocal overlay_fade_after_id, overlay_hide_after_id
+
+        progress = step / total_steps
+        current_bg = blend(overlay_start_bg, overlay_end_bg, progress)
+        current_fg = blend(overlay_start_fg, overlay_end_fg, progress)
+
+        board_success_label.config(bg=current_bg, fg=current_fg)
+
+        if step < total_steps:
+            overlay_fade_after_id = main.after(50, lambda: fade_step(step + 1, total_steps))
+            return
+
+        board_success_label.place_forget()
+        board_success_label.config(text="", bg=overlay_start_bg, fg=overlay_start_fg)
+        overlay_fade_after_id = None
+        overlay_hide_after_id = None
+
+    def show_board_success(message):
+        nonlocal overlay_hide_after_id
+
+        overlay_cancel_timers()
+        board_success_label.config(text=message, bg=overlay_start_bg, fg=overlay_start_fg)
+        board_success_label.place(relx=0.5, rely=0.5, anchor="center")
+        board_success_label.lift()
+        overlay_hide_after_id = main.after(250, lambda: fade_step(0, 20))
+
     #--------------------------------Build the chess board and history UI--------------------------------
 
     container = tk.Frame(main, bg=GLOBAL_BUTTON_STYLE["primary"])
@@ -269,10 +430,11 @@ def run_app():
     right_frame.grid_propagate(False)  # keep exact width/height
 
     tk.Label(right_frame, text="Move History", font=("Helvetica", 14), bg=GLOBAL_BUTTON_STYLE["sidebar_bg"], fg="#FFF").pack(pady=10)
-    history_scrollbar = tk.Scrollbar(right_frame, orient="vertical", bg=GLOBAL_BUTTON_STYLE["sidebar_bg"], troughcolor=GLOBAL_BUTTON_STYLE["sidebar_bg"], highlightthickness=0, bd=0)
+    history_scrollbar = ttk.Scrollbar(right_frame, orient="vertical", style="History.Vertical.TScrollbar")
     history_listbox = tk.Listbox(right_frame, yscrollcommand=history_scrollbar.set, bg=GLOBAL_BUTTON_STYLE["sidebar_bg"], fg="#FFF", selectbackground=GLOBAL_BUTTON_STYLE["hovered"], highlightthickness=0, bd=0)
     history_scrollbar.config(command=history_listbox.yview)
     history_scrollbar.pack(side="right", fill="y", padx=(0, 5), pady=5)
+    history_scrollbar_visible = True
     history_listbox.pack(side="left", fill="both", expand=True, padx=5, pady=5)
     history_listbox.insert("end", "No moves yet.")
 
@@ -284,10 +446,28 @@ def run_app():
     tile = 64
     piece_size = 60
     board_size = tile * 8
+    overlay_start_bg = "#1f2933"
+    overlay_start_fg = "#d9f99d"
+    overlay_end_bg = GLOBAL_BUTTON_STYLE["primary"]
+    overlay_end_fg = overlay_end_bg
+    overlay_fade_after_id = None
+    overlay_hide_after_id = None
 
     board_frame = tk.Frame(left_frame, width=board_size, height=board_size, bg=GLOBAL_BUTTON_STYLE["primary"])
     board_frame.place(relx=0.5, rely=0.5, anchor="center")
     board_frame.grid_propagate(False)  # keep exact width/height
+    board_success_label = tk.Label(
+        board_frame,
+        text="",
+        font=("Helvetica", 16, "bold"),
+        bg=overlay_start_bg,
+        fg=overlay_start_fg,
+        padx=18,
+        pady=10,
+        bd=1,
+        relief="solid"
+    )
+    board_success_label.place_forget()
 
     for r in range(8):
         board_frame.grid_rowconfigure(r, minsize=tile, weight=1, uniform="row")
@@ -326,7 +506,9 @@ def run_app():
             try:
                 ok = game_controller.save_notation_to_file(file_path)
                 if ok:
-                    main.label.config(text=f"Game state saved to {file_path}")
+                    game_controller.last_error = None
+                    update_status_label()
+                    show_board_success("Game saved")
                 else:
                     error = game_controller.last_error or "Unknown error"
                     messagebox.showerror("Save Error", f"Failed to save game state: {error}")
@@ -343,9 +525,10 @@ def run_app():
             try:
                 ok = game_controller.load_notation_from_file(file_path)
                 if ok:
+                    game_controller.last_error = None
                     refresh_board()
                     update_status_label()
-                    main.label.config(text=f"Game state loaded from {file_path}")
+                    show_board_success("Game loaded")
                 else:
                     error = game_controller.last_error or "Unknown error"
                     messagebox.showerror("Load Error", f"Failed to load game state: {error}")
@@ -359,7 +542,7 @@ def run_app():
         game_controller = GameController(game)
         refresh_board()
         update_status_label()
-        main.label.config(text="New Game Started")
+        show_board_success("New game started")
 
     def handle_undo():
         game_controller.undo()
@@ -370,7 +553,6 @@ def run_app():
         game_controller.reset()
         refresh_board()
         update_status_label()
-        main.label.config(text="Game Reset")
 
     def handle_replay_start():
         game_controller.replay_start()
@@ -406,7 +588,6 @@ def run_app():
     replay_end_button.pack(side="left", padx=5)
 
     refresh_board()  # Initial board setup
-    update_status_label()
 
     main.mainloop()
 
