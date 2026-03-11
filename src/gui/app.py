@@ -84,9 +84,9 @@ def run_app():
     main.label = tk.Label(main, text="New Game", font=("Helvetica", 16), bg=GLOBAL_BUTTON_STYLE["primary"], fg="#FFF")
     main.label.pack(pady=10)
 
-    file_button = tk.Menubutton(
+    game_button = tk.Menubutton(
         top_bar,
-        text="File",
+        text="Game",
         bg="#1f2933",
         fg="#ffffff",
         activebackground=GLOBAL_BUTTON_STYLE["hovered"],
@@ -96,20 +96,20 @@ def run_app():
         padx=10,
         pady=4,
     )
-    file_button.pack(side="left", padx=(6, 2), pady=2)
+    game_button.pack(side="left", padx=(6, 2), pady=2)
 
-    file_menu = tk.Menu(
-        file_button,
+    game_menu = tk.Menu(
+        game_button,
         tearoff=0,
         bg="#1f2933",
         fg="#ffffff",
         activebackground=GLOBAL_BUTTON_STYLE["hovered"],
         activeforeground="#000000",
     )
-    file_menu.add_command(label="Save", command=lambda: handle_save())
-    file_menu.add_command(label="Load", command=lambda: handle_load())
-    file_menu.add_command(label="New", command=lambda: handle_new())
-    file_button.config(menu=file_menu)
+    game_menu.add_command(label="Save", command=lambda: handle_save())
+    game_menu.add_command(label="Load", command=lambda: handle_load())
+    game_menu.add_command(label="New", command=lambda: handle_new())
+    game_button.config(menu=game_menu)
 
     style.configure(
         "WhiteSquare.TButton", 
