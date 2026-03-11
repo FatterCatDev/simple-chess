@@ -7,18 +7,23 @@ A learning project for building a chess game in Python.
 - Core chess rules are implemented and tested (movement, check/checkmate/stalemate, castling, en passant, promotion).
 - Draw rules are implemented (threefold repetition using simplified board snapshots, fifty-move rule, insufficient material).
 - SAN-lite notation is implemented for move history export/import (`export_notation`, `load_notation`).
+- Save/load to JSON file is implemented through the GUI/controller (`save_notation_to_file`, `load_notation_from_file`).
 - Notation replay-to-final-state is covered by tests, including captures, castling, promotion, en passant suffix parsing, and checkmate suffix parsing.
 - Step-by-step replay controls are implemented (`replay_start`, `replay_next`, `replay_previous`, `replay_end`).
 - Tkinter GUI prototype is implemented with:
+    - dark-aware Windows title bar support and custom dark top menu bar
    - centered 8x8 board
    - piece sprite rendering from PNG assets
    - click-to-select / click-to-move interaction
    - legal move highlighting (including castling destinations)
-   - status banner, undo, and reset controls
+    - promotion choice dialog
+    - status banner, undo, and reset controls
+    - save/load/new actions in the File menu
    - replay navigation controls (|< < > >|)
    - move history sidebar with replay position highlighting
+    - auto-hiding styled scrollbar for long history lists
    - static history display during replay (content frozen, highlight moves)
-- Test status: `95 passed, 0 failed`.
+ - Test status: `101 passed, 0 failed`.
 
 ## Project Structure
 
@@ -42,7 +47,7 @@ simple-chess/
 ### Prerequisites
 
 - Git
-- Python 3.10 or higher
+- Python 3.8 or higher
 - `tkinter` available in your Python installation (included with standard Python installers)
 
 ### Clone and Install

@@ -1,5 +1,10 @@
 # Save and Load Feature Spec (SAN-lite)
 
+## Status
+- Implemented in controller and GUI.
+- Persisted format: JSON wrapper containing SAN-lite move list.
+- Current automated coverage: save/load feature tests are passing.
+
 ## 1. Goal
 Add a Save button and Load action that use a full SAN-lite move list as the persisted game format.
 The saved notation must be sufficient for the app to reconstruct, replay, and resume a game.
@@ -58,14 +63,14 @@ Notes:
 Save:
 - Trigger: Save button/menu action.
 - Result: Writes SAN-lite list to chosen file.
-- Success feedback: brief status message (for example: "Game saved").
+- Success feedback: brief in-board fading success message (for example: "Game saved").
 - Failure feedback: show reason and do not change game state.
 - Empty-game rule: if no moves exist, save is blocked with a clear message (for example: "No moves to save.").
 
 Load:
 - Trigger: Load/Open button/menu action.
 - Result: Parse file, validate shape, pass notation to controller load flow.
-- Success feedback: board refreshes to loaded final position, replay info updates.
+- Success feedback: board refreshes to loaded final position, replay info updates, and a brief in-board fading success message is shown.
 - Failure feedback: show reason and keep current game unchanged.
 
 ## 7. Resume and Replay Rules
@@ -100,18 +105,21 @@ Policy note:
 - Invalid loads fail with clear error and no board mutation.
 
 ## 10. Test Plan (Markdown Checklist)
-- [ ] Save from new game with no moves is blocked with the agreed message.
-- [ ] Save mid-game creates persisted SAN-lite list with correct move count/order.
-- [ ] Load valid SAN-lite list reproduces expected final position.
-- [ ] Load with castling notation reproduces correct king/rook positions.
-- [ ] Load with en passant notation reproduces correct capture state.
-- [ ] Load with promotion notation reproduces promoted piece.
-- [ ] Load with check/checkmate suffixes parses successfully.
-- [ ] Replay start/next/previous/end work after load.
-- [ ] Attempt move mid-replay remains blocked.
-- [ ] Move at replay end resumes normal play and clears replay state.
-- [ ] Invalid payload (non-list moves) returns clear error.
-- [ ] Empty moves list returns clear error.
+- [x] Save from new game with no moves is blocked with the agreed message.
+- [x] Save mid-game creates persisted SAN-lite list with correct move count/order.
+- [x] Load valid SAN-lite list reproduces expected final position.
+- [x] Load with castling notation reproduces correct king/rook positions.
+- [x] Load with en passant notation reproduces correct capture state.
+- [x] Load with check/checkmate suffixes parses successfully.
+- [x] Replay start/next/previous/end work after load.
+- [x] Attempt move mid-replay remains blocked.
+- [x] Move at replay end resumes normal play and clears replay state.
+- [x] Invalid payload (non-list moves) returns clear error.
+- [x] Empty moves list returns clear error.
+- [x] Missing `moves` field returns clear error.
+- [x] Invalid JSON returns clear error.
+- [x] Missing file returns clear error.
+- [x] Failed load does not mutate the current board.
 
 ## 11. Implementation Notes
 - Reuse existing engine/controller APIs:

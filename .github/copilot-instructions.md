@@ -6,10 +6,12 @@
 
 - Core chess engine rules are implemented (including castling, en passant, promotion, draw rules, and undo).
 - SAN-lite notation export/import is implemented and tested.
+- JSON save/load file support is implemented through the controller and GUI.
 - Replay controls API (`replay_start`, `replay_next`, `replay_previous`, `replay_end`) is implemented.
-- Tkinter GUI prototype is implemented (board rendering, piece sprites, selection/move flow, legal move highlighting, undo/reset).
+- Tkinter GUI prototype is implemented (board rendering, piece sprites, selection/move flow, legal move highlighting, undo/reset, promotion dialog, move history sidebar, file menu actions).
 - Replay UI is fully functional: static history display, position highlighting during navigation, move restrictions mid-replay.
-- Current test status: `95 passed, 0 failed`.
+- Windows title bar theming follows personalization app mode, and the app uses a custom dark top menu bar.
+- Current test status: `101 passed, 0 failed`.
 
 ### Completed Steps:
 
@@ -63,6 +65,7 @@ Simple Chess/
 ├── .github/
 │   └── copilot-instructions.md  # This file
 ├── DESIGN.md
+├── SAVE_LOAD_FEATURE.md
 ├── requirements.txt     # Project dependencies
 ├── .gitignore           # Git ignore rules
 └── README.md            # Project documentation

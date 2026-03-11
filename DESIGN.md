@@ -48,11 +48,15 @@ A functional chess game with the following requirements:
 - [x] Replay-controls tests are implemented and passing
 - [x] Tkinter GUI board prototype is implemented (piece sprites, selection, legal highlights)
 - [x] GUI controls implemented: undo and reset
+- [x] GUI file actions implemented: new, save notation to file, load notation from file
+- [x] GUI pawn promotion dialog implemented
 - [x] Replay controls implemented in GUI (|< < > >| buttons)
 - [x] Replay mode uses static history display (list content frozen during navigation)
 - [x] History listbox highlights current replay position during stepping
+- [x] History list uses styled auto-hiding scrollbar
 - [x] Replay restriction: moves blocked mid-replay unless at final position
-- [x] Current test run: 95 passed, 0 failed
+- [x] Windows title bar follows personalization app mode and GUI uses a custom dark top menu bar
+- [x] Current test run: 101 passed, 0 failed
 
 ### 2.3 Future Features
 - [ ] AI opponent (Stockfish integration)
@@ -165,7 +169,8 @@ The window will display the chess board and game interface with no command-line 
 - Click on chess pieces to select them
 - Click on valid destination squares to move pieces
 - Visual feedback for valid moves
-- Pop-up dialogs for game events (checkmate, promotion, etc.)
+- Pop-up dialogs for promotion and error conditions
+- File menu actions for New, Save, and Load
 - **Help button**: Opens a dialog displaying game rules and piece movements
 - Game status display showing current turn, check status, game outcome
 
@@ -205,13 +210,14 @@ The window will display the chess board and game interface with no command-line 
     - [x] check (`+`) and checkmate (`#`)
 - [x] Add unit tests for notation output
 - [x] Export notation history in-memory (`export_notation`)
-- [ ] Export notation history to file
+- [x] Export notation history to file
 
 ### 7.35 Phase 2.6: Notation Import and Replay (Required)
 - [x] Parse saved SAN-lite notation into move sequence
 - [x] Validate parsed moves against game rules
 - [x] Build replay final state from parsed moves
 - [x] Implement replay controls: start, previous, next, end
+- [x] Load/save JSON payload through controller file I/O methods
 - [ ] Show current move number and notation during replay
 - [x] Add unit tests for import/replay-to-final-state flows
 - [x] Add unit/integration tests for step-by-step replay controls
@@ -229,12 +235,12 @@ The window will display the chess board and game interface with no command-line 
 - [x] Add buttons (Undo, Reset)
 - [ ] Add Rules/Help dialog
 - [ ] Add game over dialog (Checkmate/Stalemate)
-- [ ] Add pawn promotion dialog
-- [ ] Add notation panel/move list
-- [ ] Add save notation button
-- [ ] Add load notation button
-- [ ] Add replay controls (Prev/Next/Play/Pause)
-- [ ] Test GUI interactions
+- [x] Add pawn promotion dialog
+- [x] Add notation panel/move list
+- [x] Add save/load menu actions
+- [x] Add replay controls (start/previous/next/end)
+- [x] Add Windows dark-title-bar integration and custom top menu bar
+- [ ] Test GUI interactions manually across platforms
 
 ### 7.5 Phase 4: Polish & Distribution
 
@@ -257,7 +263,7 @@ The window will display the chess board and game interface with no command-line 
 - **GUI Framework**: Tkinter (built-in)
 - **Required Package**: Pillow (used to load and render chess piece PNG sprites)
 - **Optional Dependencies**: python-chess (chess logic helpers), stockfish (AI engine - future feature)
-- **Cross-platform**: No OS-specific dependencies required
+- **Platform Notes**: Windows dark title bar uses Win32/DWM APIs when available; core app still runs without them on other platforms
 
 ### 8.2 Clone and Run Requirements
 - Install Python and ensure Tkinter is available in the Python build
