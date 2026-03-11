@@ -1,6 +1,6 @@
 import os
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, filedialog, messagebox
 from gui.controller import GameController
 from game.game import Game
 from PIL import Image, ImageTk
@@ -30,8 +30,9 @@ def run_app():
     menu = tk.Menu(main)
     main.config(menu=menu)
     menu_0 = tk.Menu(menu, tearoff=0)
-    menu_0.add_command(label="New", command=lambda: print("New clicked"))
-    menu_0.add_command(label="Open", command=lambda: print("Open clicked"))
+    menu_0.add_command(label="Save", command=lambda: handle_save())
+    menu_0.add_command(label="Load", command=lambda: handle_load())
+    menu_0.add_command(label="New", command=lambda: handle_new())
     menu.add_cascade(label="File", menu=menu_0)
     menu_1 = tk.Menu(menu, tearoff=0)
     menu.add_cascade(label="Edit", menu=menu_1)
@@ -315,6 +316,51 @@ def run_app():
     replay_button_stype.configure("Replay.TButton", background=GLOBAL_BUTTON_STYLE["secondary"], relief="flat", padding=5)
     replay_button_stype.map("Replay.TButton", background=[("active", GLOBAL_BUTTON_STYLE["hovered"])], foreground=[("active", "#000")])  # Set the background color for replay buttons when active to a medium gray and the text color to black
 
+    def handle_save():
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=".json",
+            filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
+            title="Save Game State"
+        )
+        if file_path:
+            try:
+                ok = game_controller.save_notation_to_file(file_path)
+                if ok:
+                    main.label.config(text=f"Game state saved to {file_path}")
+                else:
+                    error = game_controller.last_error or "Unknown error"
+                    messagebox.showerror("Save Error", f"Failed to save game state: {error}")
+            except Exception as e:
+                messagebox.showerror("Save Error", f"Failed to save game state: {e}")
+
+    def handle_load():
+        file_path = filedialog.askopenfilename(
+            defaultextension=".json",
+            filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
+            title="Load Game State"
+        )
+        if file_path:
+            try:
+                ok = game_controller.load_notation_from_file(file_path)
+                if ok:
+                    refresh_board()
+                    update_status_label()
+                    main.label.config(text=f"Game state loaded from {file_path}")
+                else:
+                    error = game_controller.last_error or "Unknown error"
+                    messagebox.showerror("Load Error", f"Failed to load game state: {error}")
+            except Exception as e:
+                messagebox.showerror("Load Error", f"Failed to load game state: {e}")
+
+    def handle_new():
+        nonlocal game
+        nonlocal game_controller
+        game = Game()
+        game_controller = GameController(game)
+        refresh_board()
+        update_status_label()
+        main.label.config(text="New Game Started")
+
     def handle_undo():
         game_controller.undo()
         refresh_board()
@@ -323,7 +369,8 @@ def run_app():
     def handle_reset():
         game_controller.reset()
         refresh_board()
-        main.label.config(text="New Game")
+        update_status_label()
+        main.label.config(text="Game Reset")
 
     def handle_replay_start():
         game_controller.replay_start()

@@ -1,4 +1,5 @@
 from game.game import Game
+import json
 
 class GameController:
     def __init__(self, game: Game):
@@ -194,3 +195,47 @@ class GameController:
     def _sync_history_list(self):
         """Sync the history list with the game's move history."""
         self.history_list = [move["san"] for move in self.game.move_history]
+
+    def save_notation_to_file(self, path):
+        """Save the current game's SAN-lite notation to a file."""
+        self.last_error = None  # Clear last error on new action
+        notation = self.game.export_notation()
+        if not notation:
+            self.last_error = "No moves to save."
+            return False
+        payload = {
+            "format": "san-lite-list",
+            "version": 1,
+            "moves": notation
+        }
+        try:
+            with open(path, 'w', encoding='utf-8') as f:
+                json.dump(payload, f, indent=2)
+            return True
+        except IOError as e:
+            self.last_error = f"Failed to save notation: {e}"
+            return False
+        
+    def load_notation_from_file(self, path):
+        """Load a game's SAN-lite notation from a file."""
+        self.last_error = None  # Clear last error on new action
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                payload = json.load(f)
+                moves = payload.get("moves")
+                if moves is None:
+                    self.last_error = "Invalid notation file: 'moves' key not found."
+                    return False
+                if not isinstance(moves, list):
+                    self.last_error = "Invalid moves format in the file."
+                    return False
+                if moves == []:
+                    self.last_error = "No moves found in the file."
+                    return False
+                if not all(isinstance(move, str) for move in moves):
+                    self.last_error = "Invalid move format in the file."
+                    return False
+        except (IOError, ValueError) as e:
+            self.last_error = f"Failed to load notation: {e}"
+            return False
+        return self.load_notation(moves)
