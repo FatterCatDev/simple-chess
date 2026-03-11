@@ -41,20 +41,38 @@ simple-chess/
 
 ### Prerequisites
 
-- Python 3.8 or higher
+- Git
+- Python 3.10 or higher
+- `tkinter` available in your Python installation (included with standard Python installers)
 
-### Installation
+### Clone and Install
 
-1. Create a virtual environment (optional but recommended):
+1. Clone the repository:
+   ```bash
+   git clone <your-repo-url>
+   cd "Simple Chess"
+   ```
+
+2. Create a virtual environment (optional but recommended):
    ```bash
    python -m venv venv
    source venv/bin/activate  # On Windows: venv\Scripts\activate
    ```
 
-2. Install dependencies:
+3. Install dependencies:
    ```bash
    pip install -r requirements.txt
    ```
+
+### Runtime Dependencies
+
+- `Pillow` (required for loading chess piece PNG assets)
+- `tkinter` (GUI toolkit; shipped with standard CPython builds)
+
+If `pip install -r requirements.txt` fails because `tkinter` is missing:
+
+- Windows/macOS Python.org installers: reinstall Python and ensure `tkinter` is included.
+- Linux (Debian/Ubuntu): install `python3-tk` with your package manager.
 
 ### Running the Project
 
@@ -68,6 +86,11 @@ python src/main.py
 # PowerShell (Windows)
 $env:PYTHONPATH="src"
 python -m gui.app
+```
+
+```bash
+# macOS/Linux
+PYTHONPATH=src python -m gui.app
 ```
 
 ### Running Tests

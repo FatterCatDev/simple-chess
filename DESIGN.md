@@ -255,8 +255,16 @@ The window will display the chess board and game interface with no command-line 
 ### 8.1 Language & Libraries
 - **Language**: Python 3.8+
 - **GUI Framework**: Tkinter (built-in)
+- **Required Package**: Pillow (used to load and render chess piece PNG sprites)
 - **Optional Dependencies**: python-chess (chess logic helpers), stockfish (AI engine - future feature)
 - **Cross-platform**: No OS-specific dependencies required
+
+### 8.2 Clone and Run Requirements
+- Install Python and ensure Tkinter is available in the Python build
+- Install Python dependency: `pip install -r requirements.txt`
+- Run app from repository root:
+    - `python src/main.py` or
+    - `PYTHONPATH=src python -m gui.app` (PowerShell: `$env:PYTHONPATH="src"; python -m gui.app`)
 
 ### 8.2 Code Organization
 Project structure:
