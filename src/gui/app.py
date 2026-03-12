@@ -5,6 +5,7 @@ import ctypes
 from ctypes import wintypes
 import sys
 from datetime import datetime
+from unittest import case
 IS_WINDOWS = sys.platform.startswith("win")
 if IS_WINDOWS:
     import winreg
@@ -202,6 +203,8 @@ def run_app():
         background=blend(GLOBAL_BUTTON_STYLE["legal_move"], GLOBAL_BUTTON_STYLE["tertiary"], 0.7), 
         relief="flat"
         ) # Set the background color for legal move squares to light green and remove the border relief
+    
+    game_over_dialog_shown = False  # Flag to track if the game over dialog has been shown
 
     def ask_promotion_choice(color):
         """Show a modal dialog asking the player which piece to promote to."""
@@ -244,12 +247,87 @@ def run_app():
 
         main.wait_window(dialog)
         return result["choice"]
+    
+    def _build_game_over_message(state):
+        if not state["is_draw"]:
+            return "Checkmate! White wins!" if state["current_turn"] == "W" else "Checkmate! Black wins!"
+
+        draw_reason = state.get("draw_reason")
+        match draw_reason:
+            case "Stalemate":
+                return "Stalemate! The game is a draw."
+            case "Insufficient material":
+                return "Draw due to insufficient material."
+            case "Threefold repetition":
+                return "Draw due to threefold repetition."
+            case "Fifty-move rule":
+                return "Draw due to fifty-move rule."
+            case _:
+                return "Draw!"
+    
+    def show_game_over_dialog(message):
+        nonlocal game_over_dialog_shown
+        if game_over_dialog_shown:
+            return  # Dialog has already been shown, do not show again
+        else:
+            game_over_dialog_shown = True  # Set the flag to True to indicate the dialog has been shown
+        
+        game_over_dialog = tk.Toplevel(main)
+        game_over_dialog.title("Game Over")
+        game_over_dialog.config(bg=GLOBAL_BUTTON_STYLE["primary"])
+        game_over_dialog.resizable(False, False)
+        game_over_dialog.grab_set()
+        game_over_dialog.protocol("WM_DELETE_WINDOW", game_over_dialog.destroy)
+        # Create a label to display the game over message
+        tk.Label(
+            game_over_dialog, 
+            text=message, 
+            font=("Helvetica", 16, "bold"), 
+            bg=GLOBAL_BUTTON_STYLE["primary"], 
+            fg="#FFF"
+        ).pack(pady=(12, 6))
+        
+        # Button frame
+        btn_frame = tk.Frame(game_over_dialog, bg=GLOBAL_BUTTON_STYLE["primary"])
+        ttk.Button(
+            btn_frame,
+            text="New Game",
+            style="Replay.TButton",
+            command=lambda: [game_over_dialog.destroy(), handle_new()]
+        ).pack(side="left", padx=5)
+        ttk.Button(
+            btn_frame,
+            text="Save Game",
+            style="Replay.TButton",
+            command=handle_save
+        ).pack(side="left", padx=5)
+        ttk.Button(
+            btn_frame,
+            text="Replay",
+            style="Replay.TButton",
+            command=lambda: [game_over_dialog.destroy(), handle_replay_start()]
+        ).pack(side="left", padx=5)
+        ttk.Button(
+            btn_frame,
+            text="Close",
+            style="Replay.TButton",
+            command=game_over_dialog.destroy
+        ).pack(side="left", padx=5)
+        btn_frame.pack(pady=(0, 12), padx=20)
+
+        game_over_dialog.update_idletasks()
+        x = main.winfo_x() + (main.winfo_width() - game_over_dialog.winfo_width()) // 2
+        y = main.winfo_y() + (main.winfo_height() - game_over_dialog.winfo_height()) // 2
+        game_over_dialog.geometry(f"+{x}+{y}")
 
     def refresh_board():
         state = game_controller.get_state()
         move_list = state["move_list"]  # Use the history_list from the controller state
         selected_square = state["selected_square"]
         legal_moves = state["legal_moves"]
+        replay = state["replay"]
+        mid_replay = replay["active"] and replay["index"] < replay["total"]
+
         for square, button in square_buttons.items():
             code = state["board"].get(square)  # e.g. "wP", "bK", or None
             if code:
@@ -295,6 +373,10 @@ def run_app():
                 history_listbox.see(row_index)
 
         update_history_scrollbar_visibility()
+        if state["game_over"] and not mid_replay:
+            message = _build_game_over_message(state)
+            show_game_over_dialog(message)
+
 
     def update_history_scrollbar_visibility():
         nonlocal history_scrollbar_visible
@@ -527,6 +609,7 @@ def run_app():
                 messagebox.showerror("Save Error", f"Failed to save game state: {e}")
 
     def handle_load():
+        nonlocal game_over_dialog_shown
         file_path = filedialog.askopenfilename(
             defaultextension=".json",
             filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
@@ -536,6 +619,7 @@ def run_app():
             try:
                 ok = game_controller.load_notation_from_file(file_path)
                 if ok:
+                    game_over_dialog_shown = False  # Reset the flag when loading a game
                     game_controller.last_error = None
                     refresh_board()
                     update_status_label()
@@ -547,13 +631,14 @@ def run_app():
                 messagebox.showerror("Load Error", f"Failed to load game state: {e}")
 
     def handle_new():
-        nonlocal game
-        nonlocal game_controller
+        nonlocal game, game_controller, game_over_dialog_shown
+        game_over_dialog_shown = False  # Reset the flag when starting a new game
         game = Game()
         game_controller = GameController(game)
         refresh_board()
         update_status_label()
         show_board_success("New game started")
+
 
     def handle_undo():
         game_controller.undo()
