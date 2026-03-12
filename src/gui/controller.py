@@ -1,4 +1,5 @@
 from game.game import Game
+from src.ai.ai import RandomAI
 import json
 
 class GameController:
