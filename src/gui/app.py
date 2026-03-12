@@ -5,7 +5,6 @@ import ctypes
 from ctypes import wintypes
 import sys
 from datetime import datetime
-from unittest import case
 IS_WINDOWS = sys.platform.startswith("win")
 if IS_WINDOWS:
     import winreg
@@ -326,7 +325,7 @@ def run_app():
         selected_square = state["selected_square"]
         legal_moves = state["legal_moves"]
         replay = state["replay"]
-        mid_replay = replay["active"] and replay["index"] < replay["total"]
+        mid_replay = replay["active"]
 
         for square, button in square_buttons.items():
             code = state["board"].get(square)  # e.g. "wP", "bK", or None
