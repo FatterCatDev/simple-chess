@@ -3,15 +3,22 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 import ctypes
 from ctypes import wintypes
-import winreg
+import sys
+IS_WINDOWS = sys.platform.startswith("win")
+if IS_WINDOWS:
+    import winreg
 from gui.controller import GameController
 from game.game import Game
 from PIL import Image, ImageTk
 from utils.constants import GLOBAL_BUTTON_STYLE
 
 
+
 def _windows_prefers_dark_app_mode() -> bool:
     """Return True when Windows personalization says apps should use dark mode."""
+    if not IS_WINDOWS:
+        return False
+
     try:
         with winreg.OpenKey(
             winreg.HKEY_CURRENT_USER,
@@ -20,11 +27,13 @@ def _windows_prefers_dark_app_mode() -> bool:
             apps_use_light_theme, _ = winreg.QueryValueEx(key, "AppsUseLightTheme")
             return int(apps_use_light_theme) == 0
     except Exception:
-        # Keep current behavior on systems where personalization key is unavailable.
         return True
 
 
 def _apply_dark_title_bar(window: tk.Tk) -> None:
+    if not IS_WINDOWS:
+        return
+
     try:
         user32 = ctypes.WinDLL("user32", use_last_error=True)
         dwmapi = ctypes.WinDLL("dwmapi", use_last_error=True)
@@ -45,7 +54,7 @@ def _apply_dark_title_bar(window: tk.Tk) -> None:
         hwnd = user32.GetParent(raw_hwnd) or raw_hwnd
 
         value = ctypes.c_int(1 if _windows_prefers_dark_app_mode() else 0)
-        # 20 works on most modern Windows builds, 19 is a fallback.
+
         for attr in (20, 19):
             dwm_set_window_attribute(
                 hwnd,
@@ -55,7 +64,6 @@ def _apply_dark_title_bar(window: tk.Tk) -> None:
             )
     except Exception:
         pass
-
 def run_app():
 
     #--------------------------------Build the main application window--------------------------------
