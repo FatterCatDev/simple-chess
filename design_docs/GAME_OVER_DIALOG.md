@@ -32,10 +32,10 @@ The dialog headline changes depending on the outcome. Use the following rules:
 |---|---|---|
 | Checkmate — White wins | `game_over == True`, `is_draw == False`, `current_turn == "B"` | `"Checkmate — White wins!"` |
 | Checkmate — Black wins | `game_over == True`, `is_draw == False`, `current_turn == "W"` | `"Checkmate — Black wins!"` |
-| Stalemate | `game_over == True`, `is_draw == True`, `draw_reason == "stalemate"` | `"Stalemate — Draw!"` |
-| Threefold repetition | `game_over == True`, `is_draw == True`, `draw_reason == "threefold_repetition"` | `"Threefold Repetition — Draw!"` |
-| Fifty-move rule | `game_over == True`, `is_draw == True`, `draw_reason == "fifty_move_rule"` | `"Fifty-Move Rule — Draw!"` |
-| Insufficient material | `game_over == True`, `is_draw == True`, `draw_reason == "insufficient_material"` | `"Insufficient Material — Draw!"` |
+| Stalemate | `game_over == True`, `is_draw == True`, `draw_reason == "Stalemate"` | `"Stalemate — Draw!"` |
+| Threefold repetition | `game_over == True`, `is_draw == True`, `draw_reason == "Threefold repetition"` | `"Threefold Repetition — Draw!"` |
+| Fifty-move rule | `game_over == True`, `is_draw == True`, `draw_reason == "Fifty-move rule"` | `"Fifty-Move Rule — Draw!"` |
+| Insufficient material | `game_over == True`, `is_draw == True`, `draw_reason == "Insufficient material"` | `"Insufficient Material — Draw!"` |
 | Unknown draw | `game_over == True`, `is_draw == True`, any other `draw_reason` | `"Draw!"` |
 
 > **Why `current_turn`?** The engine advances the turn *after* each move. So when
@@ -184,7 +184,7 @@ then assert on `get_state()`.
 |---|---|---|
 | 1 | Checkmate — white delivers mate | `game_over == True`, `is_draw == False`, `current_turn == "B"` |
 | 2 | Checkmate — black delivers mate | `game_over == True`, `is_draw == False`, `current_turn == "W"` |
-| 3 | Stalemate | `game_over == True`, `is_draw == True`, `draw_reason == "stalemate"` |
+| 3 | Stalemate | `game_over == True`, `is_draw == True`, `draw_reason == "Stalemate"` |
 | 4 | Game over during live play (not replay) | `replay["active"] == False` |
 | 5 | Game over at end of replay (`replay_index == total`) | `replay["active"] == True`, `replay["index"] == replay["total"]` — dialog **should** open |
 | 6 | Game over mid-replay (`replay_index < total`) | `replay["active"] == True`, `replay["index"] < replay["total"]` — dialog must **not** open |
