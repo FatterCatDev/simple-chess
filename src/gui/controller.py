@@ -204,7 +204,10 @@ class GameController:
     def save_notation_to_file(self, path):
         """Save the current game's SAN-lite notation to a file."""
         self.last_error = None  # Clear last error on new action
-        notation = self.game.export_notation()
+        if self.game.replay_active and self.game.replay_notation:
+            notation = self.game.replay_notation
+        else:
+            notation = self.game.export_notation()
         if not notation:
             self.last_error = "No moves to save."
             return False
