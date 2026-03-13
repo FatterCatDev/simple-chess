@@ -1,14 +1,16 @@
 from game.game import Game
-from src.ai.ai import RandomAI
+from utils.constants import COLOR
 import json
 
 class GameController:
-    def __init__(self, game: Game):
+    def __init__(self, game: Game, ai_white=None, ai_black=None):
         self.game = game
         self.selected_square = None
         self.last_error = None
         self.history_list = []  # Store the full move list for GUI display
         self._sync_history_list()  # Initialize the history list with the current game state
+        self.ai_white = ai_white
+        self.ai_black = ai_black
 
     def get_state(self):
         """Return the current state of the game."""
@@ -179,9 +181,11 @@ class GameController:
             else:
                 if self.try_move(position):
                     self.selected_square = None
+                    return True  # Move was successful
                 else:
                     # If the move was invalid, keep the selection or clear it based on your design choice
                     self.selected_square = None  # or keep it as self.selected_square
+        return False  # Move was not successful or no move attempted        
 
     def build_board_state(self):
         """Build a representation of the board state for the GUI."""
@@ -240,3 +244,19 @@ class GameController:
             self.last_error = f"Failed to load notation: {e}"
             return False
         return self.load_notation(moves)
+    
+    def should_ai_move(self):
+        """Determine if it's the AI's turn to move."""
+        ai = self.ai_white if self.game.current_turn == COLOR["white"] else self.ai_black
+        return ai is not None and not self.game.game_over
+    
+    def make_ai_move(self):
+        """Make a move for the AI if it's the AI's turn."""
+        ai = self.ai_white if self.game.current_turn == COLOR["white"] else self.ai_black
+        if ai is not None and not self.game.game_over:
+            move = ai.get_move(self.game)
+            if move:
+                from_sq, to_sq = move
+                self.select_square(from_sq)
+                return self.try_move(to_sq)
+            return False

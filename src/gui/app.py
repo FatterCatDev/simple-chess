@@ -12,6 +12,7 @@ from gui.controller import GameController
 from game.game import Game
 from PIL import Image, ImageTk
 from utils.constants import GLOBAL_BUTTON_STYLE
+from ai.ai import RandomAI
 
 
 
@@ -410,6 +411,7 @@ def run_app():
         selected = game_controller.selected_square
         is_promotion_attempt = False
         promotion_choice = None
+        player_moved = False
 
         if selected:
             piece = game.board.get_piece_at(selected)
@@ -429,11 +431,17 @@ def run_app():
         if is_promotion_attempt:
             if promotion_choice is not None:
                 game_controller.last_error = None
-                game_controller.try_move(square, promotion_choice)
+                player_moved = game_controller.try_move(square, promotion_choice)
             else:
                 game_controller.selected_square = None  # Player cancelled dialog
+                player_moved = False
         else:
-            game_controller.on_square_click(square)
+            player_moved = game_controller.on_square_click(square)
+
+        if player_moved:
+            if game_controller.should_ai_move():
+                game_controller.make_ai_move()
+                player_moved = False # Reset player_moved after AI move
 
         refresh_board()
         update_status_label()
@@ -530,7 +538,9 @@ def run_app():
 
     square_buttons = {}  # Dictionary to hold references to the square buttons
     game = Game()  # Initialize the game
-    game_controller = GameController(game)  # Initialize the game controller with the game
+    ai_black = RandomAI()  # temporary AI for black
+    game_controller = GameController(game, ai_white=None, ai_black=ai_black)  # Initialize the game controller with the game
+
 
     # Fixed square board size
     tile = 64
@@ -630,10 +640,11 @@ def run_app():
                 messagebox.showerror("Load Error", f"Failed to load game state: {e}")
 
     def handle_new():
-        nonlocal game, game_controller, game_over_dialog_shown
+        nonlocal game, game_controller, game_over_dialog_shown, ai_black
         game_over_dialog_shown = False  # Reset the flag when starting a new game
         game = Game()
-        game_controller = GameController(game)
+        ai_black = RandomAI()  # Reinitialize the AI for black temporarily.
+        game_controller = GameController(game, ai_white=None, ai_black=ai_black)  # Reinitialize the game controller with the new game
         refresh_board()
         update_status_label()
         show_board_success("New game started")
