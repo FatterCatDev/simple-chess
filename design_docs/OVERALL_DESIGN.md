@@ -56,10 +56,15 @@ A functional chess game with the following requirements:
 - [x] History list uses styled auto-hiding scrollbar
 - [x] Replay restriction: moves blocked mid-replay unless at final position
 - [x] Windows title bar follows personalization app mode and GUI uses a custom dark top menu bar
+- [x] AI engine base class (`AIEngine`) and `RandomAI` built-in engine implemented
+- [x] `GameController` extended with AI support (`ai_white`/`ai_black`, `should_ai_move()`, `make_ai_move()`)
+- [x] Player name labels above/below board reflect active game mode
 - [x] Current test run: 101 passed, 0 failed
 
 ### 2.3 Future Features
-- [ ] AI opponent (Stockfish integration)
+- [ ] Game mode setup dialog (Player vs Player / Player vs AI / AI vs AI)
+- [ ] Simple Heuristic AI engine
+- [ ] Stockfish UCI engine integration
 - [ ] Different difficulty levels for AI
 - [ ] Timer for timed games
 - [ ] Custom themes and board colors
@@ -84,13 +89,13 @@ This design allows for easy swapping of AI engines or game modes without affecti
 - **StandardChessRules**: Piece movement and special-move legality checks
 - **GUI/ChessApp**: Tkinter window and user interface
 - **GameController**: Bridges GUI and game engine; maintains static history snapshot for UI display
-- **AIEngine** (Optional): Interface for chess bot integration (e.g., Stockfish)
+- **AIEngine** (Optional): Abstract base class for chess AI engines; `RandomAI` built-in subclass implemented
 - **Notation Builder**: Generates move notation history from validated moves
 - **Notation Parser**: Reads stored notation and converts it into executable moves
 - **Replay Controller**: Supports stepping forward/backward through saved moves
 
 ### 3.3 Data Flow
-User clicks on board → GUI captures event → Game validates move → Board updates → AI makes move (if enabled) → GUI refreshes display
+User clicks on board → GUI captures event → `GameController` validates move → Board updates → `GameController.should_ai_move()` checks if AI turn → AI computes and plays move (if enabled) → GUI refreshes display
 
 ---
 
@@ -240,6 +245,9 @@ The window will display the chess board and game interface with no command-line 
 - [x] Add save/load menu actions
 - [x] Add replay controls (start/previous/next/end)
 - [x] Add Windows dark-title-bar integration and custom top menu bar
+- [x] Add player name labels above/below board (updates based on AI config)
+- [x] Wire `RandomAI` as Black opponent in GUI; AI auto-replies after human move
+- [ ] Add game mode setup dialog (Player vs Player / Player vs AI / AI vs AI)
 - [ ] Test GUI interactions manually across platforms
 
 ### 7.5 Phase 4: Polish & Distribution
@@ -286,7 +294,7 @@ src/
 │   ├── game.py       # Game logic
 │   └── standard_chess_rules.py  # Chess rules validator
 ├── ai/
-│   └── engine.py     # AI engine interface (optional)
+│   └── ai.py         # AI engine interface + built-in engines (RandomAI)
 └── utils/
     └── constants.py  # Game constants
 ```
