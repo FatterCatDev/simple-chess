@@ -74,7 +74,7 @@ def run_app():
     main = tk.Tk()
     main.title("Simple Chess")
     main.config(bg=GLOBAL_BUTTON_STYLE["primary"])
-    main.geometry("800x700")
+    main.geometry("1000x800")
     main.update_idletasks()
     _apply_dark_title_bar(main)
     main.config(bg=GLOBAL_BUTTON_STYLE["primary"])
@@ -511,6 +511,26 @@ def run_app():
         board_success_label.lift()
         overlay_hide_after_id = main.after(250, lambda: fade_step(0, 20))
 
+    def player_labels(ai_white=None, ai_black=None): # Temporary AI naming, will be replaced with actual AI instances later
+        player_bottom = "Player 1"
+        player_top = "Player 2"
+        if ai_white and ai_black:
+            player_bottom = "AI (White)"
+            player_top = "AI (Black)"
+        elif ai_white:
+            player_bottom = "AI (White)"
+            player_top = "Player 2"
+        elif ai_black:
+            player_bottom = "Player 1"
+            player_top = "AI (Black)"
+        return player_top, player_bottom
+
+    def refresh_player_labels():
+        top_label, bottom_label = player_labels(ai_white=game_controller.ai_white, ai_black=game_controller.ai_black)
+        player_one_label.config(text=top_label)
+        player_two_label.config(text=bottom_label)
+                    
+
     #--------------------------------Build the chess board and history UI--------------------------------
 
     container = tk.Frame(main, bg=GLOBAL_BUTTON_STYLE["primary"])
@@ -523,13 +543,23 @@ def run_app():
 
     left_frame = tk.Frame(main_content, bg=GLOBAL_BUTTON_STYLE["primary"])
     left_frame.grid(row=0, column=0, sticky="nsew")
+    content_frame = tk.Frame(left_frame, bg=GLOBAL_BUTTON_STYLE["primary"])
+    content_frame.pack(fill="both", side="top", expand=True)
+    middle_board_holder = tk.Frame(content_frame, bg=GLOBAL_BUTTON_STYLE["primary"], width=64*8, height=64*8)
+
     right_frame = tk.Frame(main_content, bg=GLOBAL_BUTTON_STYLE["sidebar_bg"], width=220)
     right_frame.grid(row=0, column=1, sticky="ns")
     right_frame.grid_propagate(False)  # keep exact width/height
 
     tk.Label(right_frame, text="Move History", font=("Helvetica", 14), bg=GLOBAL_BUTTON_STYLE["sidebar_bg"], fg="#FFF").pack(pady=10)
     history_scrollbar = ttk.Scrollbar(right_frame, orient="vertical", style="History.Vertical.TScrollbar")
-    history_listbox = tk.Listbox(right_frame, yscrollcommand=history_scrollbar.set, bg=GLOBAL_BUTTON_STYLE["sidebar_bg"], fg="#FFF", selectbackground=GLOBAL_BUTTON_STYLE["hovered"], highlightthickness=0, bd=0)
+    history_listbox = tk.Listbox(
+        right_frame, 
+        yscrollcommand=history_scrollbar.set, 
+        bg=GLOBAL_BUTTON_STYLE["sidebar_bg"], fg="#FFF", 
+        selectbackground=GLOBAL_BUTTON_STYLE["hovered"], 
+        highlightthickness=0, bd=0
+        )
     history_scrollbar.config(command=history_listbox.yview)
     history_scrollbar.pack(side="right", fill="y", padx=(0, 5), pady=5)
     history_scrollbar_visible = True
@@ -553,9 +583,32 @@ def run_app():
     overlay_fade_after_id = None
     overlay_hide_after_id = None
 
-    board_frame = tk.Frame(left_frame, width=board_size, height=board_size, bg=GLOBAL_BUTTON_STYLE["primary"])
-    board_frame.place(relx=0.5, rely=0.5, anchor="center")
+    top_label_name, bottom_label_name = player_labels(ai_white=None, ai_black=ai_black)  # Temporary AI naming, will be replaced with actual AI instances later
+
+    top_label_frame = tk.Frame(content_frame, bg=GLOBAL_BUTTON_STYLE["primary"], height=30)
+    bottom_label_frame = tk.Frame(content_frame, bg=GLOBAL_BUTTON_STYLE["primary"], height=30)
+
+    player_one_label = tk.Label(
+        top_label_frame,
+        text=top_label_name,
+        font=("Helvetica", 12),
+        bg=GLOBAL_BUTTON_STYLE["primary"],
+        fg="#FFF"
+    )
+    player_one_label.pack(side="top", fill="x", pady=5)
+    
+    player_two_label = tk.Label(
+        bottom_label_frame,
+        text=bottom_label_name,
+        font=("Helvetica", 12),
+        bg=GLOBAL_BUTTON_STYLE["primary"],
+        fg="#FFF"
+    )
+    player_two_label.pack(side="top", fill="x", pady=5)
+
+    board_frame = tk.Frame(content_frame, width=board_size, height=board_size, bg=GLOBAL_BUTTON_STYLE["primary"])
     board_frame.grid_propagate(False)  # keep exact width/height
+
     board_success_label = tk.Label(
         board_frame,
         text="",
@@ -589,12 +642,19 @@ def run_app():
             square_buttons[file+rank] = b  # Store the button reference in the dictionary
 
     #-------------------------------Replayer Controls--------------------------------
-
-    controls = tk.Frame(left_frame, bg=GLOBAL_BUTTON_STYLE["primary"])
-    controls.place(relx=0.5, rely=1.0, anchor="s", y=-10)  # Place the controls at the bottom of the left frame
+    controls_frame = tk.Frame(left_frame, bg=GLOBAL_BUTTON_STYLE["primary"])
+    controls = tk.Frame(controls_frame, bg=GLOBAL_BUTTON_STYLE["primary"])
+    controls.pack(side="top", pady=10)  # Place the controls at the bottom of the left frame
     replay_button_stype = ttk.Style()
     replay_button_stype.configure("Replay.TButton", background=GLOBAL_BUTTON_STYLE["secondary"], relief="flat", padding=5)
     replay_button_stype.map("Replay.TButton", background=[("active", GLOBAL_BUTTON_STYLE["hovered"])], foreground=[("active", "#000")])  # Set the background color for replay buttons when active to a medium gray and the text color to black
+
+    top_label_frame.pack(side="top", fill="x", expand= True)
+    middle_board_holder.pack(side="top", fill="both", expand=True)
+    board_frame.place(in_=middle_board_holder, relx=0.5, rely=0.5, anchor="center")
+    bottom_label_frame.pack(side="top", fill="x", expand=True)
+    controls_frame.pack(side="bottom", fill="x")
+
 
     def handle_save():
         default_filename = f"Game_{datetime.now().strftime('%d_%m_%Y_%H_%M_%S')}.json"
@@ -646,6 +706,7 @@ def run_app():
         ai_black = RandomAI()  # Reinitialize the AI for black temporarily.
         game_controller = GameController(game, ai_white=None, ai_black=ai_black)  # Reinitialize the game controller with the new game
         refresh_board()
+        refresh_player_labels()
         update_status_label()
         show_board_success("New game started")
 
@@ -658,26 +719,31 @@ def run_app():
     def handle_reset():
         game_controller.reset()
         refresh_board()
+        refresh_player_labels()
         update_status_label()
 
     def handle_replay_start():
         game_controller.replay_start()
         refresh_board()
+        refresh_player_labels()
         update_status_label()
 
     def handle_replay_previous():
         game_controller.replay_previous()
         refresh_board()
+        refresh_player_labels()
         update_status_label()
 
     def handle_replay_next():
         game_controller.replay_next()
         refresh_board()
+        refresh_player_labels()
         update_status_label()
 
     def handle_replay_end():
         game_controller.replay_end()
         refresh_board()
+        refresh_player_labels()
         update_status_label()
 
     undo_button = ttk.Button(controls, text="Undo", command=handle_undo, style="Replay.TButton")
@@ -694,6 +760,7 @@ def run_app():
     replay_end_button.pack(side="left", padx=5)
 
     refresh_board()  # Initial board setup
+    refresh_player_labels()  # Initial player labels setup
 
     main.mainloop()
 
