@@ -4,31 +4,25 @@ A learning project for building a chess game in Python.
 
 ## Current Status
 
-- Core chess rules are implemented and tested (movement, check/checkmate/stalemate, castling, en passant, promotion).
-- Draw rules are implemented (threefold repetition using simplified board snapshots, fifty-move rule, insufficient material).
-- SAN-lite notation is implemented for move history export/import (`export_notation`, `load_notation`).
-- Save/load to JSON file is implemented through the GUI/controller (`save_notation_to_file`, `load_notation_from_file`).
-- Notation replay-to-final-state is covered by tests, including captures, castling, promotion, en passant suffix parsing, and checkmate suffix parsing.
-- Step-by-step replay controls are implemented (`replay_start`, `replay_next`, `replay_previous`, `replay_end`).
-- Tkinter GUI prototype is implemented with:
-    - dark-aware Windows title bar support and custom dark top menu bar
-   - centered 8x8 board
-   - piece sprite rendering from PNG assets
-   - click-to-select / click-to-move interaction
-   - legal move highlighting (including castling destinations)
-    - promotion choice dialog
-    - status banner, undo, and reset controls
-    - save/load/new actions in the File menu
-   - replay navigation controls (|< < > >|)
-   - move history sidebar with replay position highlighting
-    - auto-hiding styled scrollbar for long history lists
-   - static history display during replay (content frozen, highlight moves)
- - Test status: `101 passed, 0 failed`.
+- Core chess rules are implemented (including castling, en passant, promotion, check/checkmate/stalemate, and draw rules).
+- SAN-lite notation export/import is implemented.
+- JSON save/load is implemented through the GUI/controller.
+- Replay controls are implemented (`replay_start`, `replay_next`, `replay_previous`, `replay_end`).
+- Game over dialog is implemented (New Game / Save Game / Replay / Close).
+- Game mode setup is implemented at startup and New Game:
+   - Player vs Player
+   - Player vs AI
+   - AI vs AI
+   - AI engine selection (Random AI, Simple Heuristic Easy/Hard)
+   - Player color selection for PvAI (White/Black)
+- Board orientation flips when PvAI player color is Black.
+- Previous-move highlighting is implemented (`from` and `to` squares).
+- Current automated test status: `139 passed, 2 failed`.
 
 ## Project Structure
 
 ```
-simple-chess/
+Simple Chess/
 ├── src/
 │   ├── ai/
 │   ├── game/
@@ -36,7 +30,14 @@ simple-chess/
 │   ├── tests/
 │   ├── utils/
 │   └── main.py
-├── DESIGN.md
+├── design_docs/
+│   ├── OVERALL_DESIGN.md
+│   ├── SAVE_LOAD_FEATURE.md
+│   ├── AI_OPPONENT_FEATURE.md
+│   ├── GAME_OVER_DIALOG.md
+│   └── KNOWN_BUGS.md
+├── .github/
+│   └── copilot-instructions.md
 ├── requirements.txt
 ├── README.md
 └── .gitignore
@@ -104,6 +105,10 @@ PYTHONPATH=src python -m gui.app
 python -m unittest discover -s src/tests
 ```
 
+Current result in this workspace:
+- `139 passed, 2 failed`
+- Failing tests are both in `test_rules.py` and expect out-of-bounds moves to return `False` instead of raising `ValueError`.
+
 ## Development
 
 This is a learning project. Feel free to experiment and expand the codebase.
@@ -114,6 +119,11 @@ This is a learning project. Feel free to experiment and expand the codebase.
 - A repeated position is detected from board piece placement snapshots.
 - Castling rights and en passant rights are intentionally not included in repetition matching.
 - SAN format is SAN-lite and includes custom draw/en passant suffix handling used internally by this project.
+
+## Known Issues
+
+- Current test suite is not fully green (`139 passed, 2 failed`).
+- See `design_docs/KNOWN_BUGS.md` for tracked issues and status.
 
 ## License
 

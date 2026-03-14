@@ -2,24 +2,24 @@
 
 ## 1. Overview
 
-This feature adds AI-powered opponents to Simple Chess, allowing players to challenge computer players of varying strengths. The design supports multiple AI engines/models and difficulty levels, enabling rich gameplay scenarios including Player vs AI, AI vs AI, and future extensibility to new engines.
+This feature adds AI-powered opponents to Simple Chess. The current implementation supports built-in engines and game modes through a startup/new-game setup dialog, with future expansion planned for UCI engines.
 
 ---
 
 ## 2. Requirements
 
 ### 2.1 Core Requirements
-- [ ] Player can select an AI opponent before starting a game
-- [ ] Multiple AI engines/models available (e.g., Stockfish, random, simple heuristic)
-- [ ] Multiple difficulty levels per engine (e.g., Stockfish ELO 1000, 1600, 2000)
+- [x] Player can select an AI opponent before starting a game
+- [x] Multiple built-in AI engines/models available (Random, Simple Heuristic)
+- [x] Basic difficulty options available for Simple Heuristic (Easy/Hard in UI)
 - [ ] Optional LLM Opponent mode available
 - [ ] LLM Opponent uses the user's own account (OpenAI or GitHub) for model access
-- [ ] Game modes: Player vs AI, AI vs AI
+- [x] Game modes: Player vs AI, AI vs AI
 - [ ] AI makes legal moves respecting all chess rules
 - [ ] Game ends correctly after AI move (e.g., if AI move leads to checkmate)
 - [ ] Replay controls work with games played against AI
 - [ ] Save/load preserves the AI selection and difficulty for context
-- [ ] UI flow to select game mode, AI engine, and difficulty before play
+- [x] UI flow to select game mode, AI engine, and player color before play
 
 ### 2.2 Out of Scope (Future)
 - Timed games / time controls per side
@@ -39,7 +39,7 @@ Engines are organized into three categories:
 | Engine | Type | Difficulty Levels | Notes |
 |---|---|---|---|
 | **Random** | Dumb AI | 1 (max variation) | Picks legal moves at random; no evaluation |
-| **Simple Heuristic** | Light AI | 1–3 (basic tactics to simple planning) | Prioritizes captures, checks, and piece safety; no tree search |
+| **Simple Heuristic** | Light AI | 2 levels in GUI (Easy/Hard) | Prioritizes material and tactical outcomes using lightweight lookahead |
 
 #### UCI Engines (Installed Locally, Phase 1–3)
 | Engine | Rating | Size | Phase | Notes |
@@ -49,7 +49,7 @@ Engines are organized into three categories:
 | **Komodo** | ~3300 ELO | ~7 MB | 3 | Commercial engine; free download |
 | **Arasan** | ~2900 ELO | ~5 MB | 3 | Open source; lightweight |
 
-**MVP Scope:** Built-in engines (Random, Simple Heuristic) + Stockfish UCI engine
+**Current Scope:** Built-in engines (Random, Simple Heuristic)
 
 **Phase 3 Scope:** Add multi-engine support via generic UCI wrapper; player can choose Stockfish, Leela, or other UCI engines
 
@@ -81,10 +81,11 @@ Each user authorizes their own account and quota.
 - After player move, UI waits for AI to compute and play
 - Board updates reflect AI move
 - Game continues until checkmate, stalemate, or draw rule
+- If the player selects Black, AI (White) makes the first move automatically after setup
 
 ### 4.2 AI vs AI
 - Two AI engines (may be same model at different difficulties or different models)
-- UI auto-plays both sides
+- Current behavior: one side moves when AI turn is triggered through existing move flow; continuous autonomous loop is not implemented yet
 - Player can watch or step through using replay controls
 - Game runs at a configurable pace (instant, 1 sec per move, etc.)
 
@@ -171,6 +172,7 @@ class UCIEngine(AIEngine):
 - Evaluates all legal moves using hand-crafted scoring (captures > checks > piece safety > mobility)
 - Difficulty levels: 1=greedy (pick highest immediate score), 2=lookahead 1 move, 3=lookahead 1 move for both sides (minimax-ish)
 - Fast, no engine binary required
+- **Status: Implemented** (`src/ai/simple_heuristic_ai.py`)
 
 #### 5.2.6 LLM Opponent (Cloud, User Account)
 - Uses model access from the user's authenticated OpenAI or GitHub account
@@ -376,12 +378,20 @@ Status bar at top shows:
 - [x] Create Setup Dialog (`show_mode_dialog()`): Tkinter Toplevel with radio buttons (PvP, PvAI, AIvAI) and Start/Cancel buttons
 - [x] Wire "New Game" and app startup to show Setup Dialog
 - [x] Wire Start → initialize `GameController` via `mode_select()` with chosen mode
-- [ ] Add engine selection dropdown to Setup Dialog (Random, Simple Heuristic, Stockfish; expandable)
+- [x] Add engine selection dropdown to Setup Dialog (Random + Simple Heuristic variants)
 - [ ] Add difficulty slider to Setup Dialog (1–20; maps to UCI depth)
 - [ ] Add auto-play loop for AI vs AI mode
 - [ ] Update status label to show "AI thinking..." during move computation
-- [ ] Handle game-over during AI move (dialog triggers correctly)
+- [x] Handle game-over during AI move (dialog triggers via refresh flow)
 - [ ] Manual testing: Player vs Stockfish, Random vs Random, Heuristic vs Stockfish
+
+---
+
+## 8. Current Reality Snapshot
+
+- Implemented now: mode dialog + engine selection + player color selection + flipped board for Black player in PvAI.
+- Implemented now: first AI move triggers automatically when AI controls White at game start.
+- Not implemented yet: UCI/Stockfish integration, LLM opponent mode, dedicated AI-vs-AI continuous autoplay loop.
 
 ### Phase 3: Multi-Engine Expansion
 **Goal:** Add Leela and other UCI engines; player can choose at setup

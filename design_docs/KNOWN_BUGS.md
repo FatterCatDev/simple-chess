@@ -30,6 +30,24 @@ Any extra context, workarounds, or related code pointers.
 
 ## Open Bugs
 
+### BUG-007: Out-of-bounds target squares raise exception instead of returning False
+
+- **Area:** game/rules
+- **Severity:** Medium
+- **Status:** Open
+- **Reported:** 2026-03-14
+
+**Description:**
+`StandardChessRules.is_valid_move()` currently raises `ValueError` for destinations like `e9`/`a0` because board occupancy checks call `ChessBoard.is_position_occupied()`, which raises on invalid positions. Existing tests expect these cases to return `False`.
+
+**Steps to Reproduce:**
+1. Run `python -m unittest discover -s src/tests`.
+2. Observe failures in `test_move_to_out_of_bounds_rank_is_invalid` and `test_knight_move_off_board_is_invalid`.
+3. Both fail with `ValueError: Invalid position`.
+
+**Notes:**
+Current workspace test result: `139 passed, 2 failed`.
+
 ### BUG-006: Save during replay only saves moves up to current replay position
 
 - **Area:** controller
@@ -138,5 +156,21 @@ Tracked in `OVERALL_DESIGN.md` Phase 3: `[ ] Add Rules/Help dialog`.
 
 **Fix:**
 A `show_mode_dialog()` Toplevel dialog is now shown on application startup and before every "New Game". The dialog presents three radio-button options (PvP, PvAI, AIvAI) and uses the selection to wire `GameController` with the correct AI instances via `mode_select()`. The `current_mode` variable tracks the selected mode across calls.
+
+---
+
+### BUG-008: Previous move highlighting style gets overwritten in board refresh
+
+- **Area:** gui
+- **Severity:** Medium
+- **Status:** Fixed
+- **Reported:** 2026-03-14
+- **Fixed:** 2026-03-14
+
+**Description:**
+Previous move squares (`previous_from`, `previous_to`) were styled first, then overwritten by the default style branch in a second independent highlight block.
+
+**Fix:**
+`refresh_board()` now uses one chained highlight priority flow (selected → legal move → previous from/to → default), so previous-move styles persist correctly.
 
 ---
