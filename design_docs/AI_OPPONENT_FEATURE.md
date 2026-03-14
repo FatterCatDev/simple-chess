@@ -347,7 +347,7 @@ Status bar at top shows:
 #### Engines
 - [x] Design and implement `AIEngine` base interface (`src/ai/ai.py`)
 - [x] Implement `RandomAI` engine (built-in) (`src/ai/ai.py`)
-- [ ] Implement `SimpleHeuristicAI` engine (built-in; hand-crafted evaluation)
+- [x] Implement `SimpleHeuristicAI` engine (built-in; hand-crafted evaluation) (`src/ai/simple_heuristic_ai.py`)
 - [ ] Implement `UCIEngine` wrapper (generic UCI binary support for Stockfish, Leela, etc.)
 
 #### Controller
@@ -357,7 +357,7 @@ Status bar at top shows:
 
 #### Testing
 - [x] Add unit tests for `RandomAI` (`TestGameControllerAIMode` in `src/tests/test_controller.py`)
-- [ ] Add unit tests for `SimpleHeuristicAI` (captures prioritized, checks detected, etc.)
+- [x] Add unit tests for `SimpleHeuristicAI` (`src/tests/test_ai_engines.py`)
 - [ ] Add unit tests for `UCIEngine` with Stockfish binary
 - [ ] Add integration tests: `GameController` with Random vs Random
 - [ ] Add integration tests: `GameController` with built-in vs Stockfish

@@ -45,3 +45,12 @@ GLOBAL_BUTTON_STYLE = {
     "legal_move": "#90EE90",
     "sidebar_bg": "#2C2542",
 }
+
+PIECE_VALUES = {
+    'P': 1,  # Pawn
+    'N': 3,  # Knight
+    'B': 3,  # Bishop
+    'R': 5,  # Rook
+    'Q': 9,  # Queen
+    'K': 0   # King (not captured, so value is 0)
+}
