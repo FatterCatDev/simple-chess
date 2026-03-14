@@ -26,14 +26,20 @@ class ChessBoard:
     
     def set_piece_at(self, position, piece):
         """Set a piece at a specific position on the board."""
+        if position not in self.board:
+            raise ValueError(f"Invalid position: {position}")
         self.board[position] = piece
 
     def remove_piece_at(self, position):
         """Remove a piece from a specific position on the board."""
+        if position not in self.board:
+            raise ValueError(f"Invalid position: {position}")
         self.board[position] = None
 
     def is_position_occupied(self, position):
         """Check if a specific position on the board is occupied by a piece."""
+        if position not in self.board:
+            raise ValueError(f"Invalid position: {position}")
         if self.board.get(position) is not None:
             return True
         return False

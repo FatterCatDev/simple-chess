@@ -103,30 +103,20 @@ Define a common interface (abstract base or protocol) that all engines implement
 class AIEngine:
     """Abstract base for chess AI engines."""
     
-    def get_best_move(self, game_state: Game, difficulty: int) -> str:
+    def get_move(self, game: Game) -> tuple | None:
         """
-        Analyze the position and return the best move in SAN notation.
+        Analyze the position and return a move.
         
         Args:
-            game_state: Current Game object
-            difficulty: Engine-specific difficulty level (1-20)
+            game: Current Game object
         
         Returns:
-            Move in SAN notation (e.g., "e4", "Nxf3", "O-O")
-        
-        Raises:
-            ValueError: If no legal moves available (game over)
+            (from_square, to_square) tuple, or None if no moves available
         """
-        pass
-    
-    def get_engine_name(self) -> str:
-        """Return human-readable engine name (e.g., "Stockfish")."""
-        pass
-    
-    def get_difficulty_range(self) -> tuple[int, int]:
-        """Return (min_difficulty, max_difficulty)."""
-        pass
+        raise NotImplementedError("This method should be overridden by subclasses.")
 ```
+
+**Note:** The current implementation uses `get_move(game)` returning a `(from_sq, to_sq)` tuple rather than SAN notation. When Stockfish/UCI engines are integrated (Phase 1+), the interface may be extended to support difficulty and SAN output as originally planned.
 
 ### 5.2 Engine Implementations
 
@@ -172,9 +162,10 @@ class UCIEngine(AIEngine):
 - Difficulty scaling same as Stockfish
 
 #### 5.2.4 Random
-- Calls `game.get_legal_moves()` and picks one at random
+- Iterates over all squares, collects legal `(from_sq, to_sq)` pairs from `game.get_legal_moves(square)`, picks one at random
 - Difficulty level ignored
 - Useful for testing and baseline
+- **Status: Implemented** (`src/ai/ai.py`)
 
 #### 5.2.5 Simple Heuristic
 - Evaluates all legal moves using hand-crafted scoring (captures > checks > piece safety > mobility)
@@ -354,19 +345,19 @@ Status bar at top shows:
 **Goal:** Built-in engines + Stockfish via UCI wrapper; GameController wiring; core tests
 
 #### Engines
-- [ ] Design and implement `AIEngine` base interface
-- [ ] Implement `RandomAI` engine (built-in)
-- [ ] Implement `SimpleHeuristicAI` engine (built-in; hand-crafted evaluation)
+- [x] Design and implement `AIEngine` base interface (`src/ai/ai.py`)
+- [x] Implement `RandomAI` engine (built-in) (`src/ai/ai.py`)
+- [x] Implement `SimpleHeuristicAI` engine (built-in; hand-crafted evaluation) (`src/ai/simple_heuristic_ai.py`)
 - [ ] Implement `UCIEngine` wrapper (generic UCI binary support for Stockfish, Leela, etc.)
 
 #### Controller
-- [ ] Extend `GameController` with `ai_white` / `ai_black` fields
-- [ ] Add `should_ai_move()`, `get_ai_move()`, `make_ai_move()` methods
-- [ ] Support passing engine instances to `GameController.__init__()`
+- [x] Extend `GameController` with `ai_white` / `ai_black` fields
+- [x] Add `should_ai_move()` and `make_ai_move()` methods
+- [x] Support passing engine instances to `GameController.__init__()`
 
 #### Testing
-- [ ] Add unit tests for `RandomAI` (picks legal move, deterministic)
-- [ ] Add unit tests for `SimpleHeuristicAI` (captures prioritized, checks detected, etc.)
+- [x] Add unit tests for `RandomAI` (`TestGameControllerAIMode` in `src/tests/test_controller.py`)
+- [x] Add unit tests for `SimpleHeuristicAI` (`src/tests/test_ai_engines.py`)
 - [ ] Add unit tests for `UCIEngine` with Stockfish binary
 - [ ] Add integration tests: `GameController` with Random vs Random
 - [ ] Add integration tests: `GameController` with built-in vs Stockfish
@@ -380,14 +371,14 @@ Status bar at top shows:
 ### Phase 2: UI
 **Goal:** Setup dialog; auto-play loop; end-to-end playable
 
-- [ ] Create Setup Dialog (new Tkinter Toplevel)
-  - Radio buttons: Player vs AI, AI vs AI, Player vs Player
-  - Dropdown: AI Engine (Stockfish, Random, Simple Heuristic; expandable in Phase 3)
-  - Slider: Difficulty (1–20; maps to UCI depth for Stockfish)
-  - Buttons: Start, Cancel
-- [ ] Wire "New Game" to show Setup Dialog
-- [ ] Wire Start → initialize controller with chosen engines and difficulties
-- [ ] Add auto-play loop in `run_app()` to detect AI move and execute
+- [x] Wire `RandomAI` as Black in `app.py`; AI auto-replies after each human move
+- [x] Player name labels above/below board reflect active game mode (e.g., "AI (Black)" / "Player 1")
+- [x] Create Setup Dialog (`show_mode_dialog()`): Tkinter Toplevel with radio buttons (PvP, PvAI, AIvAI) and Start/Cancel buttons
+- [x] Wire "New Game" and app startup to show Setup Dialog
+- [x] Wire Start → initialize `GameController` via `mode_select()` with chosen mode
+- [ ] Add engine selection dropdown to Setup Dialog (Random, Simple Heuristic, Stockfish; expandable)
+- [ ] Add difficulty slider to Setup Dialog (1–20; maps to UCI depth)
+- [ ] Add auto-play loop for AI vs AI mode
 - [ ] Update status label to show "AI thinking..." during move computation
 - [ ] Handle game-over during AI move (dialog triggers correctly)
 - [ ] Manual testing: Player vs Stockfish, Random vs Random, Heuristic vs Stockfish
@@ -461,16 +452,15 @@ Status bar at top shows:
 
 ## 9. Files to Create/Modify
 
-| File | Change | Phase |
-|---|---|---|
-| `src/ai/engine.py` | New: Base `AIEngine` class and interface | 1 |
-| `src/ai/random_ai.py` | New: `RandomAI` implementation | 1 |
-| `src/ai/simple_heuristic_ai.py` | New: `SimpleHeuristicAI` implementation | 1 |
-| `src/ai/uci_engine.py` | New: Generic `UCIEngine` wrapper for Stockfish, Leela, etc. | 1 |
-| `src/ai/config.py` | New: Engine paths and configuration | 1 |
-| `src/ai/__init__.py` | Export engine classes | 1 |
-| `src/gui/controller.py` | Update `GameController.__init__()` and add `should_ai_move()`, `get_ai_move()`, `make_ai_move()` | 1 |
-| `src/gui/app.py` | Add Setup Dialog (Phase 2); add auto-play loop in `run_app()` (Phase 2) | 2 |
+| File | Change | Phase | Status |
+|---|---|---|---|
+| `src/ai/ai.py` | New: Base `AIEngine` class + `RandomAI` implementation (consolidated) | 1 | Done |
+| `src/ai/simple_heuristic_ai.py` | New: `SimpleHeuristicAI` implementation | 1 | Pending |
+| `src/ai/uci_engine.py` | New: Generic `UCIEngine` wrapper for Stockfish, Leela, etc. | 1 | Pending |
+| `src/ai/config.py` | New: Engine paths and configuration | 1 | Pending |
+| `src/ai/__init__.py` | Export engine classes | 1 | Pending |
+| `src/gui/controller.py` | Update `GameController.__init__()` and add `should_ai_move()`, `make_ai_move()` | 1 | Done |
+| `src/gui/app.py` | Partial (Phase 2): RandomAI wired as Black; player labels; Setup Dialog pending | 2 | Partial |
 | `src/tests/test_ai_engines.py` | New: Unit tests for RandomAI, SimpleHeuristic, UCIEngine | 1 |
 | `src/tests/test_controller_ai.py` | New: Integration tests for GameController + AI | 1 |
 | `requirements.txt` | Add chess library and/or python-chess (Phase 1+) | 1 |

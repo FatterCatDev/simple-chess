@@ -1,3 +1,4 @@
+from cProfile import label
 import os
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
@@ -12,6 +13,8 @@ from gui.controller import GameController
 from game.game import Game
 from PIL import Image, ImageTk
 from utils.constants import GLOBAL_BUTTON_STYLE
+from ai.ai import RandomAI
+from ai.simple_heuristic_ai import SimpleHeuristicAI
 
 
 
@@ -70,10 +73,13 @@ def run_app():
     #--------------------------------Build the main application window--------------------------------
     BASE_DIR = os.path.dirname(os.path.abspath(__file__)) # Get the directory of the current file, will be used to locate resources like images
 
+    current_mode = "pvp"  # Default mode is player vs player
+    board_flipped = False  # Default board orientation is not flipped
+
     main = tk.Tk()
     main.title("Simple Chess")
     main.config(bg=GLOBAL_BUTTON_STYLE["primary"])
-    main.geometry("800x700")
+    main.geometry("1000x800")
     main.update_idletasks()
     _apply_dark_title_bar(main)
     main.config(bg=GLOBAL_BUTTON_STYLE["primary"])
@@ -161,6 +167,28 @@ def run_app():
 
     piece_images = {}
 
+    ENGINE_OPTIONS = [
+        ("Random AI", lambda: RandomAI()),
+        ("Simple Heuristic AI (Easy)", lambda: SimpleHeuristicAI(difficulty=1)),
+        ("Simple Heuristic AI (Hard)", lambda: SimpleHeuristicAI(difficulty=2))
+        ]
+
+    def mode_select(mode_key="pvp", engine_factory=None, player_color="W"):
+        if mode_key == "pvp":
+            ai_white = None
+            ai_black = None
+        elif mode_key == "pvai":
+            if player_color == "W":
+                ai_white = None
+                ai_black = engine_factory() if engine_factory else RandomAI()
+            else:
+                ai_white = engine_factory() if engine_factory else RandomAI()
+                ai_black = None
+        else:  # "aivai"
+            ai_white = engine_factory() if engine_factory else RandomAI()
+            ai_black = engine_factory() if engine_factory else RandomAI()
+        return GameController(game, ai_white=ai_white, ai_black=ai_black)
+
     def get_piece_image(code: str):
         if code not in piece_images:
             path = os.path.join(BASE_DIR, "assets", f"{code}.png")
@@ -202,7 +230,27 @@ def run_app():
         background=blend(GLOBAL_BUTTON_STYLE["legal_move"], GLOBAL_BUTTON_STYLE["tertiary"], 0.7), 
         relief="flat"
         ) # Set the background color for legal move squares to light green and remove the border relief
-    
+    style.configure(
+        "previous_from_light.TButton",
+        background=blend(GLOBAL_BUTTON_STYLE["previous_from"], GLOBAL_BUTTON_STYLE["secondary"], 0.5),
+        relief="flat"
+    )
+    style.configure(
+        "previous_to_light.TButton",
+        background=blend(GLOBAL_BUTTON_STYLE["previous_to"], GLOBAL_BUTTON_STYLE["secondary"], 0.5),
+        relief="flat"
+    )
+    style.configure(
+        "previous_from_dark.TButton",
+        background=blend(GLOBAL_BUTTON_STYLE["previous_from"], GLOBAL_BUTTON_STYLE["tertiary"], 0.5),
+        relief="flat"
+    )
+    style.configure(
+        "previous_to_dark.TButton",
+        background=blend(GLOBAL_BUTTON_STYLE["previous_to"], GLOBAL_BUTTON_STYLE["tertiary"], 0.5),
+        relief="flat"
+    )
+
     game_over_dialog_shown = False  # Flag to track if the game over dialog has been shown
 
     def ask_promotion_choice(color):
@@ -246,7 +294,7 @@ def run_app():
 
         main.wait_window(dialog)
         return result["choice"]
-    
+
     def _build_game_over_message(state):
         if not state["is_draw"]:
             return "Checkmate! White wins!" if state["current_turn"] == "W" else "Checkmate! Black wins!"
@@ -326,6 +374,8 @@ def run_app():
         legal_moves = state["legal_moves"]
         replay = state["replay"]
         mid_replay = replay["active"]
+        previous_from = state.get("previous_from")
+        previous_to = state.get("previous_to")
 
         for square, button in square_buttons.items():
             code = state["board"].get(square)  # e.g. "wP", "bK", or None
@@ -333,19 +383,19 @@ def run_app():
                 button.config(image=get_piece_image(code), text="")
             else:
                 button.config(image="", text="")
+
+            is_light = (int(square[1]) + ord(square[0]) - ord('a')) % 2 == 0
+
             if square == selected_square:
-                if (int(square[1]) + ord(square[0]) - ord('a')) % 2 == 0:
-                    button.config(style="SelectedLight.TButton")
-                else:
-                    button.config(style="SelectedDark.TButton")
+                button.config(style="SelectedLight.TButton" if is_light else "SelectedDark.TButton")
             elif square in legal_moves:
-                if (int(square[1]) + ord(square[0]) - ord('a')) % 2 == 0:
-                    button.config(style="LegalMoveLight.TButton")
-                else:
-                    button.config(style="LegalMoveDark.TButton")
+                button.config(style="LegalMoveLight.TButton" if is_light else "LegalMoveDark.TButton")
+            elif square == previous_from:
+                button.config(style="previous_from_light.TButton" if is_light else "previous_from_dark.TButton")
+            elif square == previous_to:
+                button.config(style="previous_to_light.TButton" if is_light else "previous_to_dark.TButton")
             else:
-                sq_style = "WhiteSquare.TButton" if (int(square[1]) + ord(square[0]) - ord('a')) % 2 == 0 else "BlackSquare.TButton"
-                button.config(style=sq_style)
+                button.config(style="WhiteSquare.TButton" if is_light else "BlackSquare.TButton")
 
         history_listbox.delete(0, "end")
 
@@ -410,6 +460,7 @@ def run_app():
         selected = game_controller.selected_square
         is_promotion_attempt = False
         promotion_choice = None
+        player_moved = False
 
         if selected:
             piece = game.board.get_piece_at(selected)
@@ -429,11 +480,17 @@ def run_app():
         if is_promotion_attempt:
             if promotion_choice is not None:
                 game_controller.last_error = None
-                game_controller.try_move(square, promotion_choice)
+                player_moved = game_controller.try_move(square, promotion_choice)
             else:
                 game_controller.selected_square = None  # Player cancelled dialog
+                player_moved = False
         else:
-            game_controller.on_square_click(square)
+            player_moved = game_controller.on_square_click(square)
+
+        if player_moved:
+            if game_controller.should_ai_move():
+                game_controller.make_ai_move()
+                player_moved = False # Reset player_moved after AI move
 
         refresh_board()
         update_status_label()
@@ -503,6 +560,152 @@ def run_app():
         board_success_label.lift()
         overlay_hide_after_id = main.after(250, lambda: fade_step(0, 20))
 
+    def player_labels(ai_white=None, ai_black=None): # Temporary AI naming, will be replaced with actual AI instances later
+        if board_flipped:
+            bottom_ai, top_ai = ai_black, ai_white  # Swap for flipped board
+        else:
+            top_ai, bottom_ai = ai_black, ai_white
+        label_top = ""
+        label_bottom = ""
+        if ai_white or ai_black:
+            if top_ai:
+                label_top = top_ai.name
+            else:
+                label_top = "Player"
+            if bottom_ai:
+                label_bottom = bottom_ai.name
+            else:
+                label_bottom = "Player"
+        else:
+            label_top = "Player 2"
+            label_bottom = "Player 1"
+
+        return label_top, label_bottom
+
+    def refresh_player_labels():
+        top_label, bottom_label = player_labels(ai_white=game_controller.ai_white, ai_black=game_controller.ai_black)
+        player_one_label.config(text=top_label)
+        player_two_label.config(text=bottom_label)
+
+    def show_mode_dialog():
+        nonlocal current_mode, game_controller
+        mode_dialog = tk.Toplevel(main)
+        mode_dialog.title("Select Game Mode")
+        mode_dialog.config(bg=GLOBAL_BUTTON_STYLE["primary"])
+        mode_dialog.resizable(False, False)
+        mode_dialog.grab_set()
+        mode_dialog.protocol("WM_DELETE_WINDOW", mode_dialog.destroy)
+
+        selected_engine = tk.StringVar(value=ENGINE_OPTIONS[0][0])  # Default to the first engine option
+        engine_frame = tk.Frame(mode_dialog, bg=GLOBAL_BUTTON_STYLE["primary"])
+        tk.Label(
+            engine_frame,
+            text="Select AI Engine:",
+            font=("Helvetica", 12),
+            bg=GLOBAL_BUTTON_STYLE["primary"],
+            fg="#FFF"
+        ).pack(pady=(12, 6))
+        engine_options = tk.OptionMenu(
+            engine_frame,
+            selected_engine,
+            *[label for label, _ in ENGINE_OPTIONS]
+        )
+        engine_options.pack(pady=(0, 12), padx=20)
+        engine_options.config(bg=GLOBAL_BUTTON_STYLE["primary"], fg="#FFF", highlightthickness=0, relief="flat")
+
+        selected_player_color = tk.StringVar(value="W")  # Default to White for PvAI mode
+        color_frame = tk.Frame(mode_dialog, bg=GLOBAL_BUTTON_STYLE["primary"])
+        tk.Label(
+            color_frame,
+            text="Select Player Color (PvAI):",
+            font=("Helvetica", 12),
+            bg=GLOBAL_BUTTON_STYLE["primary"],
+            fg="#FFF"
+        ).pack(pady=(12, 6))
+        tk.Radiobutton(
+            color_frame,
+            text="White",
+            variable=selected_player_color,
+            value="W",
+            bg=GLOBAL_BUTTON_STYLE["primary"],
+            fg="#FFF",
+            selectcolor="#000000",
+            activebackground=GLOBAL_BUTTON_STYLE["hovered"],
+            activeforeground="#000"
+        ).pack(anchor="w", pady=2)
+        tk.Radiobutton(
+            color_frame,
+            text="Black",
+            variable=selected_player_color,
+            value="B",
+            bg=GLOBAL_BUTTON_STYLE["primary"],
+            fg="#FFF",
+            selectcolor="#000000",
+            activebackground=GLOBAL_BUTTON_STYLE["hovered"],
+            activeforeground="#000"
+        ).pack(anchor="w", pady=2)
+
+        tk.Label(
+            mode_dialog,
+            text="Select Game Mode:",
+            font=("Helvetica", 12),
+            bg=GLOBAL_BUTTON_STYLE["primary"],
+            fg="#FFF"
+        ).pack(pady=(12, 6))
+
+        btn_frame = tk.Frame(mode_dialog, bg=GLOBAL_BUTTON_STYLE["primary"])
+        btn_frame.pack(pady=(0, 12), padx=20)
+        engine_frame.pack(pady=(0, 12), padx=20)
+
+        modes = [("Player vs Player", "pvp"), ("Player vs AI", "pvai"), ("AI vs AI", "aivai")]
+
+        selected_mode = tk.StringVar(value=current_mode)
+
+        def update_engine_visibility(*_):
+            if selected_mode.get() == "pvp":
+                engine_frame.pack_forget()
+                color_frame.pack_forget()
+            elif selected_mode.get() == "pvai":
+                engine_frame.pack(pady=(0, 12), padx=20)
+                color_frame.pack(pady=(0, 12), padx=20)
+            else:
+                engine_frame.pack(pady=(0, 12), padx=20)
+                color_frame.pack_forget()
+
+        selected_mode.trace_add("write", update_engine_visibility)
+        update_engine_visibility()  # Initial call to set visibility based on default mode
+        
+        for label, mode_key in modes:
+            tk.Radiobutton(
+                btn_frame,
+                text=label,
+                variable=selected_mode,
+                value=mode_key,
+                bg=GLOBAL_BUTTON_STYLE["primary"],
+                fg="#FFF",
+                selectcolor="#000000",
+                activebackground=GLOBAL_BUTTON_STYLE["hovered"],
+                activeforeground="#000"
+            ).pack(anchor="w", pady=2)
+
+        action = {"confirmed": False}
+
+        def on_start():
+            action["confirmed"] = True
+            mode_dialog.destroy()
+
+        def on_cancel():
+            mode_dialog.destroy()
+
+        action_frame = tk.Frame(mode_dialog, bg=GLOBAL_BUTTON_STYLE["primary"])
+        action_frame.pack(pady=(0, 12), padx=20)
+        ttk.Button(action_frame, text="Start", style="Replay.TButton", command=on_start).pack(side="left", padx=5)
+        ttk.Button(action_frame, text="Cancel", style="Replay.TButton", command=on_cancel).pack(side="left", padx=5)
+
+        main.wait_window(mode_dialog)
+        return (selected_mode.get(), selected_engine.get(), selected_player_color.get()) if action["confirmed"] else None
+
+
     #--------------------------------Build the chess board and history UI--------------------------------
 
     container = tk.Frame(main, bg=GLOBAL_BUTTON_STYLE["primary"])
@@ -515,13 +718,23 @@ def run_app():
 
     left_frame = tk.Frame(main_content, bg=GLOBAL_BUTTON_STYLE["primary"])
     left_frame.grid(row=0, column=0, sticky="nsew")
+    content_frame = tk.Frame(left_frame, bg=GLOBAL_BUTTON_STYLE["primary"])
+    content_frame.pack(fill="both", side="top", expand=True)
+    middle_board_holder = tk.Frame(content_frame, bg=GLOBAL_BUTTON_STYLE["primary"], width=64*8, height=64*8)
+
     right_frame = tk.Frame(main_content, bg=GLOBAL_BUTTON_STYLE["sidebar_bg"], width=220)
     right_frame.grid(row=0, column=1, sticky="ns")
     right_frame.grid_propagate(False)  # keep exact width/height
 
     tk.Label(right_frame, text="Move History", font=("Helvetica", 14), bg=GLOBAL_BUTTON_STYLE["sidebar_bg"], fg="#FFF").pack(pady=10)
     history_scrollbar = ttk.Scrollbar(right_frame, orient="vertical", style="History.Vertical.TScrollbar")
-    history_listbox = tk.Listbox(right_frame, yscrollcommand=history_scrollbar.set, bg=GLOBAL_BUTTON_STYLE["sidebar_bg"], fg="#FFF", selectbackground=GLOBAL_BUTTON_STYLE["hovered"], highlightthickness=0, bd=0)
+    history_listbox = tk.Listbox(
+        right_frame, 
+        yscrollcommand=history_scrollbar.set, 
+        bg=GLOBAL_BUTTON_STYLE["sidebar_bg"], fg="#FFF", 
+        selectbackground=GLOBAL_BUTTON_STYLE["hovered"], 
+        highlightthickness=0, bd=0
+        )
     history_scrollbar.config(command=history_listbox.yview)
     history_scrollbar.pack(side="right", fill="y", padx=(0, 5), pady=5)
     history_scrollbar_visible = True
@@ -530,7 +743,9 @@ def run_app():
 
     square_buttons = {}  # Dictionary to hold references to the square buttons
     game = Game()  # Initialize the game
-    game_controller = GameController(game)  # Initialize the game controller with the game
+    ai_black = RandomAI()  # temporary AI for black
+    game_controller = mode_select(current_mode)  # Hardcoded for pvp for now.
+
 
     # Fixed square board size
     tile = 64
@@ -543,9 +758,32 @@ def run_app():
     overlay_fade_after_id = None
     overlay_hide_after_id = None
 
-    board_frame = tk.Frame(left_frame, width=board_size, height=board_size, bg=GLOBAL_BUTTON_STYLE["primary"])
-    board_frame.place(relx=0.5, rely=0.5, anchor="center")
+    top_label_name, bottom_label_name = player_labels(ai_white=game_controller.ai_white, ai_black=game_controller.ai_black)  # Temporary AI naming, will be replaced with actual AI instances later
+
+    top_label_frame = tk.Frame(content_frame, bg=GLOBAL_BUTTON_STYLE["primary"], height=30)
+    bottom_label_frame = tk.Frame(content_frame, bg=GLOBAL_BUTTON_STYLE["primary"], height=30)
+
+    player_one_label = tk.Label(
+        top_label_frame,
+        text=top_label_name,
+        font=("Helvetica", 12),
+        bg=GLOBAL_BUTTON_STYLE["primary"],
+        fg="#FFF"
+    )
+    player_one_label.pack(side="top", fill="x", pady=5)
+    
+    player_two_label = tk.Label(
+        bottom_label_frame,
+        text=bottom_label_name,
+        font=("Helvetica", 12),
+        bg=GLOBAL_BUTTON_STYLE["primary"],
+        fg="#FFF"
+    )
+    player_two_label.pack(side="top", fill="x", pady=5)
+
+    board_frame = tk.Frame(content_frame, width=board_size, height=board_size, bg=GLOBAL_BUTTON_STYLE["primary"])
     board_frame.grid_propagate(False)  # keep exact width/height
+
     board_success_label = tk.Label(
         board_frame,
         text="",
@@ -564,27 +802,46 @@ def run_app():
     for c in range(8):
         board_frame.grid_columnconfigure(c, minsize=tile, weight=1, uniform="col")
 
-    for i in range(8):
-        for j in range(8):
-            file = "abcdefgh"[j]
-            rank = str(8 - i)
-            sq_style = "WhiteSquare.TButton" if (i + j) % 2 == 0 else "BlackSquare.TButton"
-            b = ttk.Button(
-                board_frame,
-                text="",
-                style=sq_style, 
-                command=lambda sq=file+rank: handle_click(sq))
-            b.grid(row=i, column=j, sticky="nsew")
-            b.config(compound="center", padding=0, text="")  # Center the image on the button
-            square_buttons[file+rank] = b  # Store the button reference in the dictionary
+    def build_board(board_flipped=False):
+        if square_buttons:
+            for button in square_buttons.values():
+                button.destroy()
+            square_buttons.clear()
+        if board_flipped:
+            files = "hgfedcba"
+        else:
+            files = "abcdefgh"
+        
+        for i in range(8):
+            for j in range(8):
+                file = files[j]
+                rank = str(8 - i) if not board_flipped else str(i + 1)
+                sq_style = "WhiteSquare.TButton" if (i + j) % 2 == 0 else "BlackSquare.TButton"
+                b = ttk.Button(
+                    board_frame,
+                    text="",
+                    style=sq_style, 
+                    command=lambda sq=file+rank: handle_click(sq))
+                b.grid(row=i, column=j, sticky="nsew")
+                b.config(compound="center", padding=0, text="")  # Center the image on the button
+                square_buttons[file+rank] = b  # Store the button reference in the dictionary
+    
+    build_board(board_flipped=board_flipped)
 
     #-------------------------------Replayer Controls--------------------------------
-
-    controls = tk.Frame(left_frame, bg=GLOBAL_BUTTON_STYLE["primary"])
-    controls.place(relx=0.5, rely=1.0, anchor="s", y=-10)  # Place the controls at the bottom of the left frame
+    controls_frame = tk.Frame(left_frame, bg=GLOBAL_BUTTON_STYLE["primary"])
+    controls = tk.Frame(controls_frame, bg=GLOBAL_BUTTON_STYLE["primary"])
+    controls.pack(side="top", pady=10)  # Place the controls at the bottom of the left frame
     replay_button_stype = ttk.Style()
     replay_button_stype.configure("Replay.TButton", background=GLOBAL_BUTTON_STYLE["secondary"], relief="flat", padding=5)
     replay_button_stype.map("Replay.TButton", background=[("active", GLOBAL_BUTTON_STYLE["hovered"])], foreground=[("active", "#000")])  # Set the background color for replay buttons when active to a medium gray and the text color to black
+
+    top_label_frame.pack(side="top", fill="x", expand= True)
+    middle_board_holder.pack(side="top", fill="both", expand=True)
+    board_frame.place(in_=middle_board_holder, relx=0.5, rely=0.5, anchor="center")
+    bottom_label_frame.pack(side="top", fill="x", expand=True)
+    controls_frame.pack(side="bottom", fill="x")
+
 
     def handle_save():
         default_filename = f"Game_{datetime.now().strftime('%d_%m_%Y_%H_%M_%S')}.json"
@@ -630,13 +887,29 @@ def run_app():
                 messagebox.showerror("Load Error", f"Failed to load game state: {e}")
 
     def handle_new():
-        nonlocal game, game_controller, game_over_dialog_shown
+        nonlocal game, game_controller, game_over_dialog_shown, current_mode, board_flipped
+        chosen_option = show_mode_dialog()
+        if chosen_option is None:
+            return  # User cancelled the mode selection dialog
+        chosen_mode, chosen_engine, chosen_color = chosen_option
+        if not chosen_mode:
+            return  # User cancelled the mode selection dialog
+        current_mode = chosen_mode
+        board_flipped = (chosen_mode == "pvai" and chosen_color == "B")
+        engine_lookup = dict(ENGINE_OPTIONS)
+        engine_factory = engine_lookup.get(chosen_engine) if chosen_engine else None
         game_over_dialog_shown = False  # Reset the flag when starting a new game
         game = Game()
-        game_controller = GameController(game)
+        game_controller = mode_select(current_mode, engine_factory, player_color=chosen_color)
+        build_board(board_flipped=board_flipped)
         refresh_board()
+        refresh_player_labels()
         update_status_label()
         show_board_success("New game started")
+        if game_controller.should_ai_move():
+            game_controller.make_ai_move()
+            refresh_board()
+            update_status_label()
 
 
     def handle_undo():
@@ -647,26 +920,31 @@ def run_app():
     def handle_reset():
         game_controller.reset()
         refresh_board()
+        refresh_player_labels()
         update_status_label()
 
     def handle_replay_start():
         game_controller.replay_start()
         refresh_board()
+        refresh_player_labels()
         update_status_label()
 
     def handle_replay_previous():
         game_controller.replay_previous()
         refresh_board()
+        refresh_player_labels()
         update_status_label()
 
     def handle_replay_next():
         game_controller.replay_next()
         refresh_board()
+        refresh_player_labels()
         update_status_label()
 
     def handle_replay_end():
         game_controller.replay_end()
         refresh_board()
+        refresh_player_labels()
         update_status_label()
 
     undo_button = ttk.Button(controls, text="Undo", command=handle_undo, style="Replay.TButton")
@@ -682,7 +960,26 @@ def run_app():
     replay_end_button = ttk.Button(controls, text=">|", command=handle_replay_end, style="Replay.TButton")
     replay_end_button.pack(side="left", padx=5)
 
+
+    result = show_mode_dialog()
+    if result:
+        chosen_mode, chosen_engine, chosen_color = result
+        if chosen_mode:
+            current_mode = chosen_mode
+            board_flipped = (chosen_mode == "pvai" and chosen_color == "B")
+            engine_lookup = dict(ENGINE_OPTIONS)
+            engine_factory = engine_lookup.get(chosen_engine) if chosen_engine else None
+            game_controller = mode_select(current_mode, engine_factory, player_color=chosen_color)
+
+    build_board(board_flipped=board_flipped)
+
     refresh_board()  # Initial board setup
+    refresh_player_labels()  # Initial player labels setup
+
+    if game_controller.should_ai_move():
+        game_controller.make_ai_move()
+        refresh_board()
+        update_status_label()
 
     main.mainloop()
 
