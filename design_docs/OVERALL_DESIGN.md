@@ -59,10 +59,12 @@ A functional chess game with the following requirements:
 - [x] AI engine base class (`AIEngine`) and `RandomAI` built-in engine implemented
 - [x] `GameController` extended with AI support (`ai_white`/`ai_black`, `should_ai_move()`, `make_ai_move()`)
 - [x] Player name labels above/below board reflect active game mode
-- [x] Current test run: 101 passed, 0 failed
+- [x] Game mode setup dialog implemented (`show_mode_dialog()`): PvP / PvAI / AIvAI radio buttons shown on startup and New Game
+- [x] Game over dialog implemented (`show_game_over_dialog()`): fires after checkmate, stalemate, or draw; offers New Game, Save, Replay, Close
+- [x] Current test run: 141 passed, 0 failed
 
 ### 2.3 Future Features
-- [ ] Game mode setup dialog (Player vs Player / Player vs AI / AI vs AI)
+- [ ] Engine selection dropdown and difficulty slider in mode dialog
 - [ ] Simple Heuristic AI engine
 - [ ] Stockfish UCI engine integration
 - [ ] Different difficulty levels for AI

@@ -356,7 +356,7 @@ Status bar at top shows:
 - [x] Support passing engine instances to `GameController.__init__()`
 
 #### Testing
-- [ ] Add unit tests for `RandomAI` (picks legal move, deterministic)
+- [x] Add unit tests for `RandomAI` (`TestGameControllerAIMode` in `src/tests/test_controller.py`)
 - [ ] Add unit tests for `SimpleHeuristicAI` (captures prioritized, checks detected, etc.)
 - [ ] Add unit tests for `UCIEngine` with Stockfish binary
 - [ ] Add integration tests: `GameController` with Random vs Random
@@ -373,13 +373,11 @@ Status bar at top shows:
 
 - [x] Wire `RandomAI` as Black in `app.py`; AI auto-replies after each human move
 - [x] Player name labels above/below board reflect active game mode (e.g., "AI (Black)" / "Player 1")
-- [ ] Create Setup Dialog (new Tkinter Toplevel)
-  - Radio buttons: Player vs AI, AI vs AI, Player vs Player
-  - Dropdown: AI Engine (Stockfish, Random, Simple Heuristic; expandable in Phase 3)
-  - Slider: Difficulty (1–20; maps to UCI depth for Stockfish)
-  - Buttons: Start, Cancel
-- [ ] Wire "New Game" to show Setup Dialog instead of hardcoded mode
-- [ ] Wire Start → initialize controller with chosen engines and difficulties
+- [x] Create Setup Dialog (`show_mode_dialog()`): Tkinter Toplevel with radio buttons (PvP, PvAI, AIvAI) and Start/Cancel buttons
+- [x] Wire "New Game" and app startup to show Setup Dialog
+- [x] Wire Start → initialize `GameController` via `mode_select()` with chosen mode
+- [ ] Add engine selection dropdown to Setup Dialog (Random, Simple Heuristic, Stockfish; expandable)
+- [ ] Add difficulty slider to Setup Dialog (1–20; maps to UCI depth)
 - [ ] Add auto-play loop for AI vs AI mode
 - [ ] Update status label to show "AI thinking..." during move computation
 - [ ] Handle game-over during AI move (dialog triggers correctly)

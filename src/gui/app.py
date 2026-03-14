@@ -259,7 +259,7 @@ def run_app():
 
         main.wait_window(dialog)
         return result["choice"]
-    
+
     def _build_game_over_message(state):
         if not state["is_draw"]:
             return "Checkmate! White wins!" if state["current_turn"] == "W" else "Checkmate! Black wins!"

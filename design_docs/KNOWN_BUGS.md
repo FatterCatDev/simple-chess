@@ -93,20 +93,15 @@ Tracked as an open item in `OVERALL_DESIGN.md` Phase 2.6: `[ ] Show current move
 
 - **Area:** gui
 - **Severity:** Medium
-- **Status:** Open
+- **Status:** Fixed
 - **Reported:** 2026-03-13
+- **Fixed:** 2026-03-14
 
 **Description:**
-When the game ends by checkmate, stalemate, or a draw rule, the status label updates correctly but no dialog box appears to announce the result. Players must notice the status label text change themselves.
+When the game ends by checkmate, stalemate, or a draw rule, the status label updates correctly but no dialog box appears to announce the result.
 
-**Steps to Reproduce:**
-1. Play a game to checkmate or stalemate.
-2. Observe that the board freezes and the status label updates.
-3. No pop-up dialog appears confirming the result.
-
-**Notes:**
-Tracked in `OVERALL_DESIGN.md` Phase 3: `[ ] Add game over dialog (Checkmate/Stalemate)`.
-A `GAME_OVER_DIALOG.md` design doc exists in `design_docs/`.
+**Fix:**
+`show_game_over_dialog(message)` and `_build_game_over_message(state)` added to `app.py`. The dialog fires at the end of `refresh_board()` whenever `state["game_over"] and not state["replay"]["active"]`. A `game_over_dialog_shown` flag prevents the dialog from re-opening after it has been dismissed. The dialog offers four buttons: New Game, Save Game, Replay, and Close.
 
 ---
 
