@@ -565,7 +565,7 @@ class Game:
 
             if captured_piece:
                 captured_piece.has_moved = captured_piece_has_moved  # Restore has_moved status for the captured piece
-
+            self.board.set_piece_at(to_position, None)  # Remove the moved piece from the destination square
             self.board.set_piece_at(captured_position, captured_piece)
 
         # Handle castling undo
