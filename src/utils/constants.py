@@ -44,6 +44,8 @@ GLOBAL_BUTTON_STYLE = {
     "selected": "#5D84CA",
     "legal_move": "#90EE90",
     "sidebar_bg": "#2C2542",
+    "previous_from": "#FFD700",
+    "previous_to": "#FFA500",
 }
 
 PIECE_VALUES = {

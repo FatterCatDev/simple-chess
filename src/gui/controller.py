@@ -19,6 +19,8 @@ class GameController:
             "current_turn": self.game.current_turn,
             "selected_square": self.selected_square,
             "legal_moves": self.game.get_legal_moves(self.selected_square) if self.selected_square else [],
+            "previous_from": self.game.last_move["from"] if self.game.last_move else None,
+            "previous_to": self.game.last_move["to"] if self.game.last_move else None,
             "game_over": self.game.game_over,
             "is_draw": self.game.is_draw,
             "draw_reason": self.game.draw_reason,
