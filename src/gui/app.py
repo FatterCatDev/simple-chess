@@ -14,6 +14,7 @@ from game.game import Game
 from PIL import Image, ImageTk
 from utils.constants import GLOBAL_BUTTON_STYLE
 from ai.ai import RandomAI
+from ai.simple_heuristic_ai import SimpleHeuristicAI
 
 
 
@@ -72,11 +73,6 @@ def run_app():
     #--------------------------------Build the main application window--------------------------------
     BASE_DIR = os.path.dirname(os.path.abspath(__file__)) # Get the directory of the current file, will be used to locate resources like images
 
-    mode = {
-        "pvp": [None, None],
-        "pvai": [None, RandomAI()],
-        "aivai": [RandomAI(), RandomAI()]
-    }
     current_mode = "pvp"  # Default mode is player vs player
 
     main = tk.Tk()
@@ -170,8 +166,22 @@ def run_app():
 
     piece_images = {}
 
-    def mode_select(mode_key="pvp"):
-        ai_white, ai_black = mode[mode_key]
+    ENGINE_OPTIONS = [
+        ("Random AI", lambda: RandomAI()),
+        ("Simple Heuristic AI (Easy)", lambda: SimpleHeuristicAI(difficulty=1)),
+        ("Simple Heuristic AI (Hard)", lambda: SimpleHeuristicAI(difficulty=2))
+        ]
+
+    def mode_select(mode_key="pvp", engine_factory=None):
+        if mode_key == "pvp":
+            ai_white = None
+            ai_black = None
+        elif mode_key == "pvai":
+            ai_white = None
+            ai_black = engine_factory() if engine_factory else RandomAI()
+        else:  # "aivai"
+            ai_white = engine_factory() if engine_factory else RandomAI()
+            ai_black = engine_factory() if engine_factory else RandomAI()
         return GameController(game, ai_white=ai_white, ai_black=ai_black)
 
     def get_piece_image(code: str):
@@ -543,13 +553,30 @@ def run_app():
         player_two_label.config(text=bottom_label)
 
     def show_mode_dialog():
-        nonlocal current_mode, game_controller, ai_black
+        nonlocal current_mode, game_controller
         mode_dialog = tk.Toplevel(main)
         mode_dialog.title("Select Game Mode")
         mode_dialog.config(bg=GLOBAL_BUTTON_STYLE["primary"])
         mode_dialog.resizable(False, False)
         mode_dialog.grab_set()
         mode_dialog.protocol("WM_DELETE_WINDOW", mode_dialog.destroy)
+
+        selected_engine = tk.StringVar(value=ENGINE_OPTIONS[0][0])  # Default to the first engine option
+        engine_frame = tk.Frame(mode_dialog, bg=GLOBAL_BUTTON_STYLE["primary"])
+        tk.Label(
+            engine_frame,
+            text="Select AI Engine:",
+            font=("Helvetica", 12),
+            bg=GLOBAL_BUTTON_STYLE["primary"],
+            fg="#FFF"
+        ).pack(pady=(12, 6))
+        engine_options = tk.OptionMenu(
+            engine_frame,
+            selected_engine,
+            *[label for label, _ in ENGINE_OPTIONS]
+        )
+        engine_options.pack(pady=(0, 12), padx=20)
+        engine_options.config(bg=GLOBAL_BUTTON_STYLE["primary"], fg="#FFF", highlightthickness=0, relief="flat")
 
         tk.Label(
             mode_dialog,
@@ -561,10 +588,21 @@ def run_app():
 
         btn_frame = tk.Frame(mode_dialog, bg=GLOBAL_BUTTON_STYLE["primary"])
         btn_frame.pack(pady=(0, 12), padx=20)
+        engine_frame.pack(pady=(0, 12), padx=20)
 
         modes = [("Player vs Player", "pvp"), ("Player vs AI", "pvai"), ("AI vs AI", "aivai")]
 
         selected_mode = tk.StringVar(value=current_mode)
+
+        def update_engine_visibility(*_):
+            if selected_mode.get() == "pvp":
+                engine_frame.pack_forget()
+            else:
+                engine_frame.pack(pady=(0, 12), padx=20)
+
+        selected_mode.trace_add("write", update_engine_visibility)
+        update_engine_visibility()  # Initial call to set visibility based on default mode
+        
         for label, mode_key in modes:
             tk.Radiobutton(
                 btn_frame,
@@ -593,7 +631,7 @@ def run_app():
         ttk.Button(action_frame, text="Cancel", style="Replay.TButton", command=on_cancel).pack(side="left", padx=5)
 
         main.wait_window(mode_dialog)
-        return selected_mode.get() if action["confirmed"] else None
+        return (selected_mode.get(), selected_engine.get()) if action["confirmed"] else None
 
 
     #--------------------------------Build the chess board and history UI--------------------------------
@@ -766,13 +804,18 @@ def run_app():
 
     def handle_new():
         nonlocal game, game_controller, game_over_dialog_shown, current_mode
-        chosen_mode = show_mode_dialog()
+        chosen_option = show_mode_dialog()
+        if chosen_option is None:
+            return  # User cancelled the mode selection dialog
+        chosen_mode, chosen_engine = chosen_option
         if not chosen_mode:
             return  # User cancelled the mode selection dialog
         current_mode = chosen_mode
+        engine_lookup = dict(ENGINE_OPTIONS)
+        engine_factory = engine_lookup.get(chosen_engine) if chosen_engine else None
         game_over_dialog_shown = False  # Reset the flag when starting a new game
         game = Game()
-        game_controller = mode_select(current_mode)  # Hardcoded for pvp for now.
+        game_controller = mode_select(current_mode, engine_factory)  # Hardcoded for pvp for now.
         refresh_board()
         refresh_player_labels()
         update_status_label()
@@ -827,10 +870,15 @@ def run_app():
     replay_end_button = ttk.Button(controls, text=">|", command=handle_replay_end, style="Replay.TButton")
     replay_end_button.pack(side="left", padx=5)
 
-    chosen_mode = show_mode_dialog()
-    if chosen_mode:
-        current_mode = chosen_mode
-        game_controller = mode_select(current_mode)
+
+    result = show_mode_dialog()
+    if result:
+        chosen_mode, chosen_engine = result
+        if chosen_mode:
+            current_mode = chosen_mode
+            engine_lookup = dict(ENGINE_OPTIONS)
+            engine_factory = engine_lookup.get(chosen_engine) if chosen_engine else None
+            game_controller = mode_select(current_mode, engine_factory)
 
     refresh_board()  # Initial board setup
     refresh_player_labels()  # Initial player labels setup

@@ -494,8 +494,6 @@ class Game:
             raise ValueError("No moves to undo.")
         if self.replay_active:
             raise ValueError("Cannot undo moves while in replay mode.")
-        if self.game_over:
-            raise ValueError("Cannot undo moves after the game is over.")
         
         last_move = self.move_history.pop()  # Remove the last move from history
         self.position_history.pop()  # Remove the last position snapshot from position history

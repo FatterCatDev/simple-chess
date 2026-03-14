@@ -50,6 +50,7 @@ class SimpleHeuristicAI(AIEngine):
     def _best_greedy_move(self, game):
         """Select the best move based on the heuristic evaluation."""
         all_moves = self._collect_all_moves(game)
+        zero_score_moves = []
         best_move = None
         best_score = float('-inf')
 
@@ -61,17 +62,25 @@ class SimpleHeuristicAI(AIEngine):
             elif score == best_score and random.choice([True, False]):
                 # Randomly choose between moves with the same score to add variability
                 best_move = (from_square, to_square)
+            if score < 0:
+                # If the move is bad (score < 0), consider it as a last resort
+                zero_score_moves.append((from_square, to_square))
+        if best_score == 0:
+            # If all moves are bad (score <= 0), pick a random move to avoid losing immediately
+            return random.choice(zero_score_moves)
 
         return best_move
     
     def _best_lookahead_move(self, game, moves):
         """Select the best move based on a lookahead evaluation."""
+        zero_score_moves = []
         best_move = None
         best_score = float('-inf')
         for from_square, to_square in moves:
             immediate = self._evaluate_move(game, from_square, to_square)
             game.make_move(from_square, to_square)
             if game.game_over:
+                game.undo_move()
                 return (from_square, to_square)  # Immediate win
             check_bonus = 0.5 if game.is_in_check else 0
             opponent_moves = self._collect_all_moves(game)
@@ -88,5 +97,10 @@ class SimpleHeuristicAI(AIEngine):
                 best_move = (from_square, to_square)
             elif lookahead == best_score and random.choice([True, False]):
                 best_move = (from_square, to_square)
+            if lookahead == 0:
+                zero_score_moves.append((from_square, to_square))
+        if best_score == 0:
+            # If all moves are bad (score <= 0), pick a random move to avoid losing immediately
+            return random.choice(zero_score_moves)
 
         return best_move
