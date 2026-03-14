@@ -3,7 +3,8 @@
 ## Status
 - Implemented in controller and GUI.
 - Persisted format: JSON wrapper containing SAN-lite move list.
-- Current automated coverage: save/load feature tests are passing.
+- Current automated coverage: save/load tests are passing.
+- Workspace-wide test status currently is `139 passed, 2 failed` (failures are outside save/load scope).
 
 ## 1. Goal
 Add a Save button and Load action that use a full SAN-lite move list as the persisted game format.
@@ -120,6 +121,9 @@ Policy note:
 - [x] Invalid JSON returns clear error.
 - [x] Missing file returns clear error.
 - [x] Failed load does not mutate the current board.
+
+Current note:
+- Save while replaying uses full replay notation (`replay_notation`) so files are not truncated mid-replay.
 
 ## 11. Implementation Notes
 - Reuse existing engine/controller APIs:

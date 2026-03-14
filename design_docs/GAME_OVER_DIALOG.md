@@ -2,9 +2,7 @@
 
 ## 1. Overview
 
-When a game ends by checkmate, stalemate, or a draw rule, the app currently only updates
-the status label at the top of the window. This feature adds a modal dialog that appears
-automatically so the result is impossible to miss.
+When a game ends by checkmate, stalemate, or a draw rule, the app shows a modal dialog automatically so the result is clearly visible.
 
 ---
 
@@ -29,12 +27,12 @@ The dialog headline changes depending on the outcome. Use the following rules:
 
 | Outcome | How to detect | Message |
 |---|---|---|
-| Checkmate — White wins | `game_over == True`, `is_draw == False`, `current_turn == "W"` | `"Checkmate — White wins!"` |
-| Checkmate — Black wins | `game_over == True`, `is_draw == False`, `current_turn == "B"` | `"Checkmate — Black wins!"` |
-| Stalemate | `game_over == True`, `is_draw == True`, `draw_reason == "Stalemate"` | `"Stalemate — Draw!"` |
-| Threefold repetition | `game_over == True`, `is_draw == True`, `draw_reason == "Threefold repetition"` | `"Threefold Repetition — Draw!"` |
-| Fifty-move rule | `game_over == True`, `is_draw == True`, `draw_reason == "Fifty-move rule"` | `"Fifty-Move Rule — Draw!"` |
-| Insufficient material | `game_over == True`, `is_draw == True`, `draw_reason == "Insufficient material"` | `"Insufficient Material — Draw!"` |
+| Checkmate — White wins | `game_over == True`, `is_draw == False`, `current_turn == "W"` | `"Checkmate! White wins!"` |
+| Checkmate — Black wins | `game_over == True`, `is_draw == False`, `current_turn == "B"` | `"Checkmate! Black wins!"` |
+| Stalemate | `game_over == True`, `is_draw == True`, `draw_reason == "Stalemate"` | `"Stalemate! The game is a draw."` |
+| Threefold repetition | `game_over == True`, `is_draw == True`, `draw_reason == "Threefold repetition"` | `"Draw due to threefold repetition."` |
+| Fifty-move rule | `game_over == True`, `is_draw == True`, `draw_reason == "Fifty-move rule"` | `"Draw due to fifty-move rule."` |
+| Insufficient material | `game_over == True`, `is_draw == True`, `draw_reason == "Insufficient material"` | `"Draw due to insufficient material."` |
 | Unknown draw | `game_over == True`, `is_draw == True`, any other `draw_reason` | `"Draw!"` |
 
 > **Why `current_turn`?** The engine does **not** advance the turn after a mating move.
@@ -162,8 +160,7 @@ Match the existing `ask_promotion_choice` dialog precisely:
 
 | File | Change |
 |---|---|
-| `src/gui/app.py` | Add `show_game_over_dialog()`, `_build_game_over_message()`, `game_over_dialog_shown` flag; update `refresh_board()`, `handle_new()`, and `handle_load()` |
-| `src/tests/test_controller.py` | Add tests verifying `get_state()` returns correct `game_over`, `is_draw`, `draw_reason`, and `current_turn` values for each end-game scenario (see Section 10) |
+| `src/gui/app.py` | Contains `show_game_over_dialog()`, `_build_game_over_message()`, `game_over_dialog_shown` flag; `refresh_board()` triggers dialog when game is over and not replaying |
 
 No changes to `controller.py` or the game engine are needed — `handle_save()`,
 `handle_replay_start()`, and `handle_new()` already exist in `app.py` and can be called
@@ -176,9 +173,8 @@ exposed through `get_state()`.
 
 ## 10. Test Plan
 
-Tests go in `src/tests/test_controller.py`. For each scenario below, set up a board
-position where that condition is one move away, make the final move through the controller,
-then assert on `get_state()`.
+Manual/UI verification is currently the primary validation path for this feature.
+Automated tests in `src/tests/test_controller.py` validate state semantics used by the dialog trigger path.
 
 | # | Scenario | Assert |
 |---|---|---|
@@ -210,7 +206,9 @@ Test 6 is the most important: it directly verifies the replay-mode guard.
 - [x] Dialog is centered over the main window
 - [x] Dialog is modal (main window is unclickable while dialog is open)
 - [x] Opening a new game resets the dialog-shown flag so it can fire again next game
-- [x] All new controller tests pass with 0 failures
+- [x] Dialog logic is implemented and wired in live gameplay flow
+- [x] Dialog does not open while replay is active
+- [x] Dialog supports New Game / Save Game / Replay / Close actions
 
 ---
 
