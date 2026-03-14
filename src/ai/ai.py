@@ -6,6 +6,8 @@ class AIEngine:
         raise NotImplementedError("This method should be overridden by subclasses.")
 
 class RandomAI(AIEngine):
+    def __init__(self):
+        self.name = "Random AI | ELO: 0"
     def get_move(self, game):
         """Generate a random valid move"""
         all_moves = []

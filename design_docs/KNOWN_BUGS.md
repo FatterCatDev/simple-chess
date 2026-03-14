@@ -129,8 +129,9 @@ Tracked in `OVERALL_DESIGN.md` Phase 3: `[ ] Add Rules/Help dialog`.
 
 - **Area:** gui
 - **Severity:** Medium
-- **Status:** Open
+- **Status:** Fixed
 - **Reported:** 2026-03-13
+- **Fixed:** 2026-03-14
 
 **Description:**
 `app.py` always creates a `RandomAI` as the Black opponent on startup and on "New Game". There is no way to switch to Player vs Player or to choose a different AI engine without editing the source code.
@@ -140,7 +141,7 @@ Tracked in `OVERALL_DESIGN.md` Phase 3: `[ ] Add Rules/Help dialog`.
 2. Observe that Black is always played by the AI with no option to disable it.
 3. Click "New Game" — same hardcoded setup is used.
 
-**Notes:**
-A Game Mode Setup Dialog is planned in `AI_OPPONENT_FEATURE.md` Phase 2. This bug will be resolved once the setup dialog is implemented.
+**Fix:**
+A `show_mode_dialog()` Toplevel dialog is now shown on application startup and before every "New Game". The dialog presents three radio-button options (PvP, PvAI, AIvAI) and uses the selection to wire `GameController` with the correct AI instances via `mode_select()`. The `current_mode` variable tracks the selected mode across calls.
 
 ---

@@ -1,3 +1,4 @@
+from cProfile import label
 import os
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
@@ -70,6 +71,13 @@ def run_app():
 
     #--------------------------------Build the main application window--------------------------------
     BASE_DIR = os.path.dirname(os.path.abspath(__file__)) # Get the directory of the current file, will be used to locate resources like images
+
+    mode = {
+        "pvp": [None, None],
+        "pvai": [None, RandomAI()],
+        "aivai": [RandomAI(), RandomAI()]
+    }
+    current_mode = "pvp"  # Default mode is player vs player
 
     main = tk.Tk()
     main.title("Simple Chess")
@@ -161,6 +169,10 @@ def run_app():
     #--------------------------------Helpers-------------------------------------------------
 
     piece_images = {}
+
+    def mode_select(mode_key="pvp"):
+        ai_white, ai_black = mode[mode_key]
+        return GameController(game, ai_white=ai_white, ai_black=ai_black)
 
     def get_piece_image(code: str):
         if code not in piece_images:
@@ -515,21 +527,74 @@ def run_app():
         player_bottom = "Player 1"
         player_top = "Player 2"
         if ai_white and ai_black:
-            player_bottom = "AI (White)"
-            player_top = "AI (Black)"
+            player_bottom = ai_white.name
+            player_top = ai_black.name
         elif ai_white:
-            player_bottom = "AI (White)"
+            player_bottom = ai_white.name
             player_top = "Player 2"
         elif ai_black:
             player_bottom = "Player 1"
-            player_top = "AI (Black)"
+            player_top = ai_black.name
         return player_top, player_bottom
 
     def refresh_player_labels():
         top_label, bottom_label = player_labels(ai_white=game_controller.ai_white, ai_black=game_controller.ai_black)
         player_one_label.config(text=top_label)
         player_two_label.config(text=bottom_label)
-                    
+
+    def show_mode_dialog():
+        nonlocal current_mode, game_controller, ai_black
+        mode_dialog = tk.Toplevel(main)
+        mode_dialog.title("Select Game Mode")
+        mode_dialog.config(bg=GLOBAL_BUTTON_STYLE["primary"])
+        mode_dialog.resizable(False, False)
+        mode_dialog.grab_set()
+        mode_dialog.protocol("WM_DELETE_WINDOW", mode_dialog.destroy)
+
+        tk.Label(
+            mode_dialog,
+            text="Select Game Mode:",
+            font=("Helvetica", 12),
+            bg=GLOBAL_BUTTON_STYLE["primary"],
+            fg="#FFF"
+        ).pack(pady=(12, 6))
+
+        btn_frame = tk.Frame(mode_dialog, bg=GLOBAL_BUTTON_STYLE["primary"])
+        btn_frame.pack(pady=(0, 12), padx=20)
+
+        modes = [("Player vs Player", "pvp"), ("Player vs AI", "pvai"), ("AI vs AI", "aivai")]
+
+        selected_mode = tk.StringVar(value=current_mode)
+        for label, mode_key in modes:
+            tk.Radiobutton(
+                btn_frame,
+                text=label,
+                variable=selected_mode,
+                value=mode_key,
+                bg=GLOBAL_BUTTON_STYLE["primary"],
+                fg="#FFF",
+                selectcolor="#000000",
+                activebackground=GLOBAL_BUTTON_STYLE["hovered"],
+                activeforeground="#000"
+            ).pack(anchor="w", pady=2)
+
+        action = {"confirmed": False}
+
+        def on_start():
+            action["confirmed"] = True
+            mode_dialog.destroy()
+
+        def on_cancel():
+            mode_dialog.destroy()
+
+        action_frame = tk.Frame(mode_dialog, bg=GLOBAL_BUTTON_STYLE["primary"])
+        action_frame.pack(pady=(0, 12), padx=20)
+        ttk.Button(action_frame, text="Start", style="Replay.TButton", command=on_start).pack(side="left", padx=5)
+        ttk.Button(action_frame, text="Cancel", style="Replay.TButton", command=on_cancel).pack(side="left", padx=5)
+
+        main.wait_window(mode_dialog)
+        return selected_mode.get() if action["confirmed"] else None
+
 
     #--------------------------------Build the chess board and history UI--------------------------------
 
@@ -569,7 +634,7 @@ def run_app():
     square_buttons = {}  # Dictionary to hold references to the square buttons
     game = Game()  # Initialize the game
     ai_black = RandomAI()  # temporary AI for black
-    game_controller = GameController(game, ai_white=None, ai_black=ai_black)  # Initialize the game controller with the game
+    game_controller = mode_select(current_mode)  # Hardcoded for pvp for now.
 
 
     # Fixed square board size
@@ -583,7 +648,7 @@ def run_app():
     overlay_fade_after_id = None
     overlay_hide_after_id = None
 
-    top_label_name, bottom_label_name = player_labels(ai_white=None, ai_black=ai_black)  # Temporary AI naming, will be replaced with actual AI instances later
+    top_label_name, bottom_label_name = player_labels(ai_white=game_controller.ai_white, ai_black=game_controller.ai_black)  # Temporary AI naming, will be replaced with actual AI instances later
 
     top_label_frame = tk.Frame(content_frame, bg=GLOBAL_BUTTON_STYLE["primary"], height=30)
     bottom_label_frame = tk.Frame(content_frame, bg=GLOBAL_BUTTON_STYLE["primary"], height=30)
@@ -700,11 +765,14 @@ def run_app():
                 messagebox.showerror("Load Error", f"Failed to load game state: {e}")
 
     def handle_new():
-        nonlocal game, game_controller, game_over_dialog_shown, ai_black
+        nonlocal game, game_controller, game_over_dialog_shown, current_mode
+        chosen_mode = show_mode_dialog()
+        if not chosen_mode:
+            return  # User cancelled the mode selection dialog
+        current_mode = chosen_mode
         game_over_dialog_shown = False  # Reset the flag when starting a new game
         game = Game()
-        ai_black = RandomAI()  # Reinitialize the AI for black temporarily.
-        game_controller = GameController(game, ai_white=None, ai_black=ai_black)  # Reinitialize the game controller with the new game
+        game_controller = mode_select(current_mode)  # Hardcoded for pvp for now.
         refresh_board()
         refresh_player_labels()
         update_status_label()
@@ -758,6 +826,11 @@ def run_app():
     replay_next_button.pack(side="left", padx=5)
     replay_end_button = ttk.Button(controls, text=">|", command=handle_replay_end, style="Replay.TButton")
     replay_end_button.pack(side="left", padx=5)
+
+    chosen_mode = show_mode_dialog()
+    if chosen_mode:
+        current_mode = chosen_mode
+        game_controller = mode_select(current_mode)
 
     refresh_board()  # Initial board setup
     refresh_player_labels()  # Initial player labels setup

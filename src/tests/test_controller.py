@@ -2,6 +2,7 @@ import unittest
 
 from game.game import Game
 from gui.controller import GameController
+from ai.ai import RandomAI
 from utils.constants import COLOR
 
 
@@ -235,6 +236,106 @@ class TestGameOverDialogState(unittest.TestCase):
         self.assertTrue(state["game_over"])
         self.assertTrue(state["is_draw"])
         self.assertEqual(state["draw_reason"], "Insufficient material")
+
+
+class TestGameControllerAIMode(unittest.TestCase):
+    """Verify AI slot wiring and should_ai_move / make_ai_move behavior."""
+
+    # ------------------------------------------------------------------
+    # PvP mode: no AI slots
+    # ------------------------------------------------------------------
+    def test_pvp_mode_has_no_ai_slots(self):
+        controller = GameController(Game(), ai_white=None, ai_black=None)
+        self.assertIsNone(controller.ai_white)
+        self.assertIsNone(controller.ai_black)
+
+    def test_pvp_should_ai_move_false_on_white_turn(self):
+        controller = GameController(Game(), ai_white=None, ai_black=None)
+        self.assertFalse(controller.should_ai_move())
+
+    def test_pvp_should_ai_move_false_on_black_turn(self):
+        game = Game()
+        controller = GameController(game, ai_white=None, ai_black=None)
+        game.current_turn = COLOR["black"]
+        self.assertFalse(controller.should_ai_move())
+
+    # ------------------------------------------------------------------
+    # PvAI mode: ai_black set, ai_white None
+    # ------------------------------------------------------------------
+    def test_pvai_mode_has_correct_ai_slots(self):
+        ai = RandomAI()
+        controller = GameController(Game(), ai_white=None, ai_black=ai)
+        self.assertIsNone(controller.ai_white)
+        self.assertIsInstance(controller.ai_black, RandomAI)
+
+    def test_pvai_should_ai_move_false_on_white_turn(self):
+        controller = GameController(Game(), ai_white=None, ai_black=RandomAI())
+        self.assertFalse(controller.should_ai_move())
+
+    def test_pvai_should_ai_move_true_on_black_turn(self):
+        game = Game()
+        controller = GameController(game, ai_white=None, ai_black=RandomAI())
+        game.current_turn = COLOR["black"]
+        self.assertTrue(controller.should_ai_move())
+
+    def test_pvai_should_ai_move_false_when_game_over(self):
+        game = Game()
+        controller = GameController(game, ai_white=None, ai_black=RandomAI())
+        game.current_turn = COLOR["black"]
+        game.game_over = True
+        self.assertFalse(controller.should_ai_move())
+
+    def test_pvai_make_ai_move_plays_legal_move_and_advances_turn(self):
+        game = Game()
+        controller = GameController(game, ai_white=None, ai_black=RandomAI())
+        # Advance to Black's turn with a valid White move
+        controller.selected_square = "e2"
+        controller.try_move("e4")
+        self.assertEqual(game.current_turn, COLOR["black"])
+        result = controller.make_ai_move()
+        self.assertTrue(result)
+        self.assertEqual(game.current_turn, COLOR["white"])
+
+    # ------------------------------------------------------------------
+    # AIvAI mode: both slots set
+    # ------------------------------------------------------------------
+    def test_aivai_mode_has_both_ai_slots(self):
+        controller = GameController(Game(), ai_white=RandomAI(), ai_black=RandomAI())
+        self.assertIsInstance(controller.ai_white, RandomAI)
+        self.assertIsInstance(controller.ai_black, RandomAI)
+
+    def test_aivai_should_ai_move_true_for_white_turn(self):
+        controller = GameController(Game(), ai_white=RandomAI(), ai_black=RandomAI())
+        self.assertTrue(controller.should_ai_move())
+
+    def test_aivai_should_ai_move_true_for_black_turn(self):
+        game = Game()
+        controller = GameController(game, ai_white=RandomAI(), ai_black=RandomAI())
+        game.current_turn = COLOR["black"]
+        self.assertTrue(controller.should_ai_move())
+
+    # ------------------------------------------------------------------
+    # RandomAI engine
+    # ------------------------------------------------------------------
+    def test_random_ai_returns_legal_move_from_start(self):
+        game = Game()
+        ai = RandomAI()
+        move = ai.get_move(game)
+        self.assertIsNotNone(move)
+        from_sq, to_sq = move
+        self.assertIn(to_sq, game.get_legal_moves(from_sq))
+
+    def test_random_ai_returns_none_when_no_moves(self):
+        game = Game()
+        game.game_over = True
+        # Clear the board so there are no legal moves
+        for sq in list(game.board.board.keys()):
+            game.board.remove_piece_at(sq)
+        ai = RandomAI()
+        self.assertIsNone(ai.get_move(game))
+
+    def test_random_ai_name_contains_random_ai(self):
+        self.assertIn("Random AI", RandomAI().name)
 
 
 if __name__ == "__main__":
