@@ -87,7 +87,6 @@ jobs:
           $pubStore.Open("ReadWrite");  $pubStore.Add($cert);  $pubStore.Close()
 
           & $signtool.FullName verify /pa /v "dist\SimpleChess.exe"
-          & $signtool.FullName verify /pa /v "dist\SimpleChess.exe"
 
       - name: Remove signing certificate (Windows)
         if: runner.os == 'Windows'
