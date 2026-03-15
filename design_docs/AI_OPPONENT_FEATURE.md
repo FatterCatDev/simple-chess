@@ -292,6 +292,45 @@ Privacy policy (design-level):
 - Only send minimum turn context needed for move selection
 - Do not send local file paths or unrelated user data to model providers
 
+### 5.7 Dedicated AI Simulation State (No Live Undo Loop)
+
+Goal: harden AI decision-making by removing repeated `make_move`/`undo_move` calls against the live `Game` object during search.
+
+#### Design Decision
+- Keep `Game` as the authoritative runtime state for UI/controller/replay.
+- Introduce an AI-only lightweight state model used exclusively inside engine search.
+- AI search becomes pure simulation (`apply_move -> next_state`) instead of mutating and undoing live game state.
+
+#### AI Simulation Components
+- `AIState`: compact snapshot containing board occupancy, side to move, castling rights, en passant target, and halfmove clock.
+- `AIMove`: from-square, to-square, optional promotion, and metadata flags (capture/castle/en-passant).
+- `generate_legal_moves(state)`: pure function for legal move generation from `AIState`.
+- `apply_move(state, move) -> AIState`: returns a derived state for search expansion.
+- `evaluate_state(state)`: static evaluation function used by heuristic search.
+
+#### Integration Boundary
+- Before AI turn: convert current `Game` into `AIState`.
+- AI computes best move using simulation-only search.
+- After decision: apply exactly one final move to live `Game` through normal controller/game API.
+- Replay, SAN-lite export/import, save/load, and UI updates remain tied to live `Game` only.
+
+#### Why This Change
+- Eliminates state-corruption risk from incomplete undo paths during exceptions.
+- Reduces coupling between AI internals and UI/game lifecycle.
+- Improves reliability in AI-vs-AI and rapid autoplay scenarios.
+
+#### Rollout Plan (Incremental)
+1. Add `AIState` + converter layer (`Game -> AIState`).
+2. Implement simulation move generation and `apply_move` for current built-in engine needs.
+3. Switch `SimpleHeuristicAI` Hard mode search to simulation path.
+4. Keep Easy mode unchanged initially; migrate later if desired.
+5. Add stress tests for long AI-vs-AI runs to confirm no crash/regression.
+
+#### Non-Goals (MVP)
+- Full SAN-based simulation for search.
+- Replacing existing replay pipeline.
+- Introducing transposition tables/opening books in first pass.
+
 ---
 
 ## 6. UI / UX Flow
