@@ -180,7 +180,10 @@ def run_app():
         ("Simple Heuristic AI (Hard)", lambda: SimpleHeuristicAI(difficulty=2))
         ]
 
-    def mode_select(mode_key="pvp", engine_factory=None, player_color="W"):
+    def mode_select(mode_key="pvp", engine_factory=None, player_color="W", engine_label=None):
+        ai_white_meta = None
+        ai_black_meta = None
+
         if mode_key == "pvp":
             ai_white = None
             ai_black = None
@@ -188,13 +191,25 @@ def run_app():
             if player_color == "W":
                 ai_white = None
                 ai_black = engine_factory() if engine_factory else RandomAI()
+                ai_black_meta = {"engine": engine_label or "Random AI"}
             else:
                 ai_white = engine_factory() if engine_factory else RandomAI()
                 ai_black = None
+                ai_white_meta = {"engine": engine_label or "Random AI"}
         else:  # "aivai"
             ai_white = engine_factory() if engine_factory else RandomAI()
             ai_black = engine_factory() if engine_factory else RandomAI()
-        return GameController(game, ai_white=ai_white, ai_black=ai_black)
+            ai_white_meta = {"engine": engine_label or "Random AI"}
+            ai_black_meta = {"engine": engine_label or "Random AI"}
+
+        controller = GameController(game, ai_white=ai_white, ai_black=ai_black)
+        controller.set_ai_context(
+            game_mode=mode_key,
+            player_color=player_color,
+            ai_white=ai_white_meta,
+            ai_black=ai_black_meta
+        )
+        return controller
 
     def get_piece_image(code: str):
         if code not in piece_images:
@@ -792,8 +807,13 @@ def run_app():
 
     square_buttons = {}  # Dictionary to hold references to the square buttons
     game = Game()  # Initialize the game
-    ai_black = RandomAI()  # temporary AI for black
-    game_controller = mode_select(current_mode)  # Hardcoded for pvp for now.
+
+    game_controller = mode_select(
+        current_mode,
+        engine_factory,
+        player_color=chosen_color,
+        engine_label=chosen_engine
+    )
 
 
     # Fixed square board size
@@ -918,7 +938,7 @@ def run_app():
 
     def handle_load():
         auto_play_stop()  # Stop auto-play when loading a game
-        nonlocal game_over_dialog_shown
+        nonlocal game_over_dialog_shown, game_controller, current_mode, board_flipped
         file_path = filedialog.askopenfilename(
             defaultextension=".json",
             filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
@@ -930,6 +950,28 @@ def run_app():
                 if ok:
                     game_over_dialog_shown = False  # Reset the flag when loading a game
                     game_controller.last_error = None
+                    ctx = game_controller.ai_context if hasattr(game_controller, "ai_context") else {}
+                    loaded_mode = ctx.get("game_mode", "pvp")
+                    loaded_player_color = ctx.get("player_color", "W")
+                    loaded_ai_white = ctx.get("ai_white")
+                    loaded_ai_black = ctx.get("ai_black")
+                    loaded_engine_label = None
+                    if isinstance(loaded_ai_white, dict) and loaded_ai_white.get("engine"):
+                        loaded_engine_label = loaded_ai_white.get("engine")
+                    elif isinstance(loaded_ai_black, dict) and loaded_ai_black.get("engine"):
+                        loaded_engine_label = loaded_ai_black.get("engine")
+                    current_mode = loaded_mode
+                    board_flipped = (loaded_mode == "pvai" and loaded_player_color == "B")
+                    engine_lookup = dict(ENGINE_OPTIONS)
+                    engine_factory = engine_lookup.get(loaded_engine_label) if loaded_engine_label else None
+                    loaded_moves = game_controller.game.export_notation()  # Export the current game notation before reinitializing
+                    game_controller = mode_select(
+                        current_mode,
+                        engine_factory,
+                        player_color=loaded_player_color,
+                        engine_label=loaded_engine_label
+                    )
+                    game_controller.load_notation(loaded_moves)  # Load the exported notation into the new game controller
                     refresh_board()
                     update_status_label()
                     show_board_success("Game loaded")
@@ -956,7 +998,12 @@ def run_app():
         engine_factory = engine_lookup.get(chosen_engine) if chosen_engine else None
         game_over_dialog_shown = False  # Reset the flag when starting a new game
         game = Game()
-        game_controller = mode_select(current_mode, engine_factory, player_color=chosen_color)
+        game_controller = mode_select(
+            current_mode,
+            engine_factory,
+            player_color=chosen_color,
+            engine_label=chosen_engine
+        )
         build_board(board_flipped=board_flipped)
         refresh_board()
         refresh_player_labels()
@@ -1036,7 +1083,12 @@ def run_app():
             board_flipped = (chosen_mode == "pvai" and chosen_color == "B")
             engine_lookup = dict(ENGINE_OPTIONS)
             engine_factory = engine_lookup.get(chosen_engine) if chosen_engine else None
-            game_controller = mode_select(current_mode, engine_factory, player_color=chosen_color)
+            game_controller = mode_select(
+                current_mode,
+                engine_factory,
+                player_color=chosen_color,
+                engine_label=chosen_engine
+            )
 
     build_board(board_flipped=board_flipped)
 

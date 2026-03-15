@@ -71,9 +71,13 @@ class TestSaveLoadFeature(unittest.TestCase):
 
         self.assertTrue(ok)
         payload = self._read_json(save_path)
-        self.assertEqual(payload.get("format"), "san-lite-list")
-        self.assertEqual(payload.get("version"), 1)
+        self.assertEqual(payload.get("format"), "san-lite-list-with-ai")
+        self.assertEqual(payload.get("version"), 2)
         self.assertEqual(payload.get("moves"), expected_moves)
+        self.assertIn("game_mode", payload)
+        self.assertIn("player_color", payload)
+        self.assertIn("ai_white", payload)
+        self.assertIn("ai_black", payload)
 
     def test_load_valid_payload_reconstructs_final_position(self):
         self._require_controller_api()
@@ -350,6 +354,71 @@ class TestSaveLoadFeature(unittest.TestCase):
         self.assertEqual(self._board_signature(self.game), before_board)
         self.assertEqual(self.game.current_turn, before_turn)
         self.assertEqual(self.game.export_notation(), before_history)
+
+    def test_load_v2_payload_restores_ai_context_metadata(self):
+        self._require_controller_api()
+
+        source_game = Game()
+        source_game.make_move("e2", "e4")
+        source_game.make_move("e7", "e5")
+        source_game.make_move("g1", "f3")
+        source_game.make_move("b8", "c6")
+
+        save_path = self._save_path("load_v2_ai_context.json")
+        with open(save_path, "w", encoding="utf-8") as f:
+            json.dump(
+                {
+                    "format": "san-lite-list-with-ai",
+                    "version": 2,
+                    "moves": source_game.export_notation(),
+                    "game_mode": "pvai",
+                    "player_color": "B",
+                    "ai_white": {"engine": "Simple Heuristic AI (Hard)"},
+                    "ai_black": None,
+                },
+                f,
+            )
+
+        target_controller = GameController(Game())
+        ok = target_controller.load_notation_from_file(save_path)
+
+        self.assertTrue(ok)
+        self.assertEqual(target_controller.ai_context.get("game_mode"), "pvai")
+        self.assertEqual(target_controller.ai_context.get("player_color"), "B")
+        self.assertEqual(
+            target_controller.ai_context.get("ai_white"),
+            {"engine": "Simple Heuristic AI (Hard)"},
+        )
+        self.assertIsNone(target_controller.ai_context.get("ai_black"))
+
+    def test_load_v1_payload_uses_default_ai_context(self):
+        self._require_controller_api()
+
+        source_game = Game()
+        source_game.make_move("e2", "e4")
+        source_game.make_move("e7", "e5")
+        source_game.make_move("g1", "f3")
+        source_game.make_move("b8", "c6")
+
+        save_path = self._save_path("load_v1_defaults.json")
+        with open(save_path, "w", encoding="utf-8") as f:
+            json.dump(
+                {
+                    "format": "san-lite-list",
+                    "version": 1,
+                    "moves": source_game.export_notation(),
+                },
+                f,
+            )
+
+        target_controller = GameController(Game())
+        ok = target_controller.load_notation_from_file(save_path)
+
+        self.assertTrue(ok)
+        self.assertEqual(target_controller.ai_context.get("game_mode"), "pvp")
+        self.assertEqual(target_controller.ai_context.get("player_color"), "W")
+        self.assertIsNone(target_controller.ai_context.get("ai_white"))
+        self.assertIsNone(target_controller.ai_context.get("ai_black"))
 
 
 if __name__ == "__main__":

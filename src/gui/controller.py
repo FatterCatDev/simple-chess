@@ -11,6 +11,12 @@ class GameController:
         self._sync_history_list()  # Initialize the history list with the current game state
         self.ai_white = ai_white
         self.ai_black = ai_black
+        self.ai_context = {
+            "game_mode": "pvp",
+            "player_color": "W",
+            "ai_white": None,
+            "ai_black": None
+        }
 
     def get_state(self):
         """Return the current state of the game."""
@@ -216,9 +222,13 @@ class GameController:
             self.last_error = "No moves to save."
             return False
         payload = {
-            "format": "san-lite-list",
-            "version": 1,
-            "moves": notation
+            "format": "san-lite-list-with-ai",
+            "version": 2,
+            "moves": notation,
+            "game_mode": self.ai_context["game_mode"],
+            "player_color": self.ai_context["player_color"],
+            "ai_white": self.ai_context["ai_white"],
+            "ai_black": self.ai_context["ai_black"]
         }
         try:
             with open(path, 'w', encoding='utf-8') as f:
@@ -247,11 +257,30 @@ class GameController:
                 if not all(isinstance(move, str) for move in moves):
                     self.last_error = "Invalid move format in the file."
                     return False
+                game_mode = payload.get("game_mode", "pvp")
+                player_color = payload.get("player_color", "W")
+                ai_white = payload.get("ai_white", None)
+                ai_black = payload.get("ai_black", None)
+                self.set_ai_context(
+                    game_mode=game_mode,
+                    player_color=player_color,
+                    ai_white=ai_white,
+                    ai_black=ai_black
+                )
         except (IOError, ValueError) as e:
             self.last_error = f"Failed to load notation: {e}"
             return False
         return self.load_notation(moves)
     
+    def set_ai_context(self, game_mode, player_color, ai_white=None, ai_black=None):
+        """Set the AI context for the game."""
+        self.ai_context = {
+            "game_mode": game_mode,
+            "player_color": player_color,
+            "ai_white": ai_white,
+            "ai_black": ai_black
+        }
+
     def should_ai_move(self):
         """Determine if it's the AI's turn to move."""
         ai = self.ai_white if self.game.current_turn == COLOR["white"] else self.ai_black
