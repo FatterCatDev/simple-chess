@@ -107,5 +107,4 @@ venv.bak/
 Thumbs.db
 
 # GitHub
-.github/
-github/
+copilot-instructions.md
