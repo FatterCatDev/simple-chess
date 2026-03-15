@@ -1,10 +1,11 @@
 import random
 from ai.ai import AIEngine
 from ai.sim_adapter import (
-    ai_state_to_game,
     apply_move_on_state,
+    generate_legal_moves_on_state,
     game_to_ai_state,
     get_piece_at_state,
+    is_in_check_state,
     is_square_under_attack_state,
 )
 from utils.constants import PIECE_VALUES
@@ -121,7 +122,8 @@ class SimpleHeuristicAI(AIEngine):
 
         for from_square, to_square in moves:
             winning_state = apply_move_on_state(root_state, from_square, to_square)
-            if winning_state.game_over and not winning_state.is_draw:
+            opponent_moves = generate_legal_moves_on_state(winning_state)
+            if not opponent_moves and is_in_check_state(winning_state, winning_state.current_turn):
                 return (from_square, to_square)
 
         candidate_moves = self._top_scored_state_moves(root_state, moves, self.MAX_CANDIDATE_MOVES)
@@ -129,15 +131,14 @@ class SimpleHeuristicAI(AIEngine):
         for from_square, to_square in candidate_moves:
             immediate = self._evaluate_move_on_state(root_state, from_square, to_square)
             simulated_state = apply_move_on_state(root_state, from_square, to_square)
+            opponent_moves = generate_legal_moves_on_state(simulated_state)
 
-            if simulated_state.game_over:
-                if not simulated_state.is_draw:
+            if not opponent_moves:
+                if is_in_check_state(simulated_state, simulated_state.current_turn):
                     return (from_square, to_square)
                 lookahead = immediate
             else:
-                simulated_game = ai_state_to_game(simulated_state)
                 check_bonus = 0.5 if simulated_state.is_in_check else 0
-                opponent_moves = simulated_game.get_all_valid_moves(simulated_game.current_turn)
                 opponent_moves = self._top_scored_state_moves(simulated_state, opponent_moves, self.MAX_REPLY_MOVES)
                 opponent_best_score = float('-inf')
 
