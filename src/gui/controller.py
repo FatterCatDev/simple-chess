@@ -124,15 +124,21 @@ class GameController:
             self.last_error = str(e)
             return False
 
+    def _ensure_replay_initialized(self):
+        """Initialize replay notation if replay has not been started yet."""
+        if self.game.replay_notation:
+            return
+
+        notation = self.game.export_notation()
+        self.history_list = notation.copy()  # Store the full move list for GUI display
+        if not notation:
+            raise ValueError("No moves available to replay.")
+        self.game.replay_start(notation)
+
     def replay_next(self):
         """Replay the next move in the game."""
         try:
-            if not self.game.replay_notation:
-                notation = self.game.export_notation()
-                self.history_list = notation.copy()  # Store the full move list for GUI display
-                if not notation:
-                    raise ValueError("No moves available to replay.")
-                self.game.replay_start(notation)
+            self._ensure_replay_initialized()
             self.game.replay_next()
             self.selected_square = None
             self.last_error = None
@@ -144,12 +150,7 @@ class GameController:
     def replay_previous(self):
         """Replay the previous move in the game."""
         try:
-            if not self.game.replay_notation:
-                notation = self.game.export_notation()
-                self.history_list = notation.copy()  # Store the full move list for GUI display
-                if not notation:
-                    raise ValueError("No moves available to replay.")
-                self.game.replay_start(notation)
+            self._ensure_replay_initialized()
             self.game.replay_previous()
             self.selected_square = None
             self.last_error = None
@@ -161,12 +162,7 @@ class GameController:
     def replay_end(self):
         """Replay the game to the end."""
         try:
-            if not self.game.replay_notation:
-                notation = self.game.export_notation()
-                self.history_list = notation.copy()  # Store the full move list for GUI display
-                if not notation:
-                    raise ValueError("No moves available to replay.")
-                self.game.replay_start(notation)
+            self._ensure_replay_initialized()
             self.game.replay_end()
             self.selected_square = None
             self.last_error = None

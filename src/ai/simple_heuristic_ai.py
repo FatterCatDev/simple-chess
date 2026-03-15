@@ -1,6 +1,6 @@
 import random
 from ai.ai import AIEngine
-from utils.constants import PIECE_VALUES, FILES, RANKS
+from utils.constants import PIECE_VALUES
 
 class SimpleHeuristicAI(AIEngine):
     """A simple heuristic-based AI engine for chess."""
@@ -12,25 +12,13 @@ class SimpleHeuristicAI(AIEngine):
         self.difficulty = difficulty  # Difficulty can be used to adjust the depth of move evaluation
 
     def get_move(self, game):
-        all_moves = self._collect_all_moves(game)
+        all_moves = game.get_all_valid_moves(game.current_turn)
         if not all_moves:
             return None  # No valid moves available
         if self.difficulty == 1:
             return self._best_greedy_move(game)
         elif self.difficulty >= 2:
             return self._best_lookahead_move(game, all_moves)
-
-    def _collect_all_moves(self, game):
-        """Collect all legal moves for the current player."""
-        all_moves = []
-        for square in game.board.board:
-            if not isinstance(square, str) or len(square) != 2 or square[0] not in FILES or square[1] not in RANKS:
-                continue  # Skip invalid squares
-            piece = game.board.get_piece_at(square)
-            if piece and piece.color == game.current_turn:
-                for target_square in game.get_legal_moves(square):
-                    all_moves.append((square, target_square))
-        return all_moves
 
     def _evaluate_move(self, game, from_square, to_square):
         """Evaluate a move based on simple heuristics."""
@@ -52,7 +40,7 @@ class SimpleHeuristicAI(AIEngine):
     
     def _best_greedy_move(self, game):
         """Select the best move based on the heuristic evaluation."""
-        all_moves = self._collect_all_moves(game)
+        all_moves = game.get_all_valid_moves(game.current_turn)
         best_moves = []
         best_score = float('-inf')
 
@@ -98,7 +86,7 @@ class SimpleHeuristicAI(AIEngine):
                 continue
 
             check_bonus = 0.5 if game.is_in_check else 0
-            opponent_moves = self._collect_all_moves(game)
+            opponent_moves = game.get_all_valid_moves(game.current_turn)
             opponent_best_score = float('-inf')
 
             for opponent_move in opponent_moves:

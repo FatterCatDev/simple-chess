@@ -1,4 +1,3 @@
-from cProfile import label
 import os
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
@@ -10,11 +9,10 @@ IS_WINDOWS = sys.platform.startswith("win")
 if IS_WINDOWS:
     import winreg
 from gui.controller import GameController
+from gui.ai_mode import ENGINE_OPTIONS, build_controller_for_mode, build_ai_from_meta
 from game.game import Game
 from PIL import Image, ImageTk
 from utils.constants import GLOBAL_BUTTON_STYLE
-from ai.ai import RandomAI
-from ai.simple_heuristic_ai import SimpleHeuristicAI
 import traceback
 
 
@@ -173,62 +171,6 @@ def run_app():
     #--------------------------------Helpers-------------------------------------------------
 
     piece_images = {}
-
-    ENGINE_OPTIONS = [
-        ("Random AI", lambda: RandomAI()),
-        ("Simple Heuristic AI (Easy)", lambda: SimpleHeuristicAI(difficulty=1)),
-        ("Simple Heuristic AI (Hard)", lambda: SimpleHeuristicAI(difficulty=2))
-        ]
-
-    def mode_select(mode_key="pvp", engine_factory=None, player_color="W", engine_label=None):
-        ai_white_meta = None
-        ai_black_meta = None
-
-        if mode_key == "pvp":
-            ai_white = None
-            ai_black = None
-        elif mode_key == "pvai":
-            if player_color == "W":
-                ai_white = None
-                ai_black = engine_factory() if engine_factory else RandomAI()
-                ai_black_meta = {"engine": getattr(ai_black, "engine_name", None) or "Random AI", "difficulty": getattr(ai_black, "difficulty", 0)}
-            else:
-                ai_white = engine_factory() if engine_factory else RandomAI()
-                ai_black = None
-                ai_white_meta = {"engine": getattr(ai_white, "engine_name", None) or "Random AI", "difficulty": getattr(ai_white, "difficulty", 0)}
-        else:  # "aivai"
-            ai_white = engine_factory() if engine_factory else RandomAI()
-            ai_black = engine_factory() if engine_factory else RandomAI()
-            ai_white_meta = {"engine": getattr(ai_white, "engine_name", None) or "Random AI", "difficulty": getattr(ai_white, "difficulty", 0)}
-            ai_black_meta = {"engine": getattr(ai_black, "engine_name", None) or "Random AI", "difficulty": getattr(ai_black, "difficulty", 0)}
-
-        controller = GameController(game, ai_white=ai_white, ai_black=ai_black)
-        controller.set_ai_context(
-            game_mode=mode_key,
-            player_color=player_color,
-            ai_white=ai_white_meta,
-            ai_black=ai_black_meta
-        )
-        return controller
-    
-    def build_ai_from_meta(ai_meta):
-        if not ai_meta:
-            return None
-
-        engine = ai_meta.get("engine")
-        difficulty = ai_meta.get("difficulty", 0)
-
-        if engine == "Random AI":
-            return RandomAI()
-        if engine == "Simple Heuristic AI":
-            try:
-                difficulty = int(difficulty)
-            except (ValueError, TypeError):
-                difficulty = 1  # Default to easy if difficulty is not a valid integer
-            difficulty = 1 if difficulty <= 1 else 2
-            return SimpleHeuristicAI(difficulty=difficulty or 1)
-
-        return RandomAI()  # Default to RandomAI if engine type is unknown
 
     def get_piece_image(code: str):
         if code not in piece_images:
@@ -639,6 +581,41 @@ def run_app():
         mode_dialog.protocol("WM_DELETE_WINDOW", mode_dialog.destroy)
 
         selected_engine = tk.StringVar(value=ENGINE_OPTIONS[0][0])  # Default to the first engine option
+
+        # AI vs AI engine selection frame
+        selected_white_engine = tk.StringVar(value=ENGINE_OPTIONS[0][0])  # Default to the first engine option for white
+        selected_black_engine = tk.StringVar(value=ENGINE_OPTIONS[0][0])  # Default to the first engine option for black
+        aivai_engine_frame = tk.Frame(mode_dialog, bg=GLOBAL_BUTTON_STYLE["primary"])
+        tk.Label(
+            aivai_engine_frame,
+            text="Select AI Engine for White:",
+            font=("Helvetica", 12),
+            bg=GLOBAL_BUTTON_STYLE["primary"],
+            fg="#FFF"
+        ).pack(pady=(12, 6))
+        white_engine_options = tk.OptionMenu(
+            aivai_engine_frame,
+            selected_white_engine,
+            *[label for label, _ in ENGINE_OPTIONS]
+        )
+        white_engine_options.pack(pady=(0, 12), padx=20)
+        white_engine_options.config(bg=GLOBAL_BUTTON_STYLE["primary"], fg="#FFF", highlightthickness=0, relief="flat")
+        tk.Label(
+            aivai_engine_frame,
+            text="Select AI Engine for Black:",
+            font=("Helvetica", 12),
+            bg=GLOBAL_BUTTON_STYLE["primary"],
+            fg="#FFF"
+        ).pack(pady=(12, 6))
+        black_engine_options = tk.OptionMenu(
+            aivai_engine_frame,
+            selected_black_engine,
+            *[label for label, _ in ENGINE_OPTIONS]
+        )
+        black_engine_options.pack(pady=(0, 12), padx=20)
+        black_engine_options.config(bg=GLOBAL_BUTTON_STYLE["primary"], fg="#FFF", highlightthickness=0, relief="flat")
+
+        # AI engine selection frame for Player vs AI mode
         engine_frame = tk.Frame(mode_dialog, bg=GLOBAL_BUTTON_STYLE["primary"])
         tk.Label(
             engine_frame,
@@ -707,12 +684,17 @@ def run_app():
             if selected_mode.get() == "pvp":
                 engine_frame.pack_forget()
                 color_frame.pack_forget()
+                aivai_engine_frame.pack_forget()
+
             elif selected_mode.get() == "pvai":
                 engine_frame.pack(pady=(0, 12), padx=20)
                 color_frame.pack(pady=(0, 12), padx=20)
+                aivai_engine_frame.pack_forget()
+
             else:
-                engine_frame.pack(pady=(0, 12), padx=20)
+                engine_frame.pack_forget()
                 color_frame.pack_forget()
+                aivai_engine_frame.pack(pady=(0, 12), padx=20)
 
         selected_mode.trace_add("write", update_engine_visibility)
         update_engine_visibility()  # Initial call to set visibility based on default mode
@@ -745,7 +727,13 @@ def run_app():
         ttk.Button(action_frame, text="Cancel", style="Replay.TButton", command=on_cancel).pack(side="left", padx=5)
 
         main.wait_window(mode_dialog)
-        return (selected_mode.get(), selected_engine.get(), selected_player_color.get()) if action["confirmed"] else None
+        return (
+            selected_mode.get(), 
+            selected_engine.get(), 
+            selected_player_color.get(), 
+            selected_white_engine.get(), 
+            selected_black_engine.get()
+            ) if action["confirmed"] else None
 
     def auto_play_start():
         nonlocal auto_play
@@ -827,7 +815,7 @@ def run_app():
     square_buttons = {}  # Dictionary to hold references to the square buttons
     game = Game()  # Initialize the game
 
-    game_controller = mode_select(current_mode)
+    game_controller = build_controller_for_mode(game_instance=game, mode_key="pvp")
 
 
     # Fixed square board size
@@ -983,7 +971,7 @@ def run_app():
                         game_mode=loaded_mode,
                         player_color=loaded_player_color,
                         ai_white=loaded_ai_white,
-                        ai_black=loaded_ai_black,
+                        ai_black=loaded_ai_black
                     )
                     
                     reloaded_ok = game_controller.load_notation(loaded_moves)
@@ -1011,20 +999,19 @@ def run_app():
         chosen_option = show_mode_dialog()
         if chosen_option is None:
             return  # User cancelled the mode selection dialog
-        chosen_mode, chosen_engine, chosen_color = chosen_option
+        chosen_mode, chosen_engine, chosen_color, chosen_white_engine, chosen_black_engine = chosen_option
         if not chosen_mode:
             return  # User cancelled the mode selection dialog
         current_mode = chosen_mode
         board_flipped = (chosen_mode == "pvai" and chosen_color == "B")
-        engine_lookup = dict(ENGINE_OPTIONS)
-        engine_factory = engine_lookup.get(chosen_engine) if chosen_engine else None
         game_over_dialog_shown = False  # Reset the flag when starting a new game
-        game = Game()
-        game_controller = mode_select(
-            current_mode,
-            engine_factory,
+        game_controller = build_controller_for_mode(
+            game_instance=Game(),
+            mode_key=chosen_mode,
             player_color=chosen_color,
-            engine_label=chosen_engine
+            chosen_engine=chosen_engine,
+            chosen_white_engine=chosen_white_engine,
+            chosen_black_engine=chosen_black_engine
         )
         build_board(board_flipped=board_flipped)
         refresh_board()
@@ -1055,33 +1042,24 @@ def run_app():
         if game_controller.should_ai_move():
             auto_play_start()  # Start auto-play if AI should move after reset
 
-    def handle_replay_start():
-        auto_play_stop()  # Stop auto-play when starting replay
-        game_controller.replay_start()
+    def _run_replay_action(action):
+        auto_play_stop()  # Stop auto-play during replay navigation
+        action()
         refresh_board()
         refresh_player_labels()
         update_status_label()
+
+    def handle_replay_start():
+        _run_replay_action(game_controller.replay_start)
 
     def handle_replay_previous():
-        auto_play_stop()  # Stop auto-play when going to previous move in replay
-        game_controller.replay_previous()
-        refresh_board()
-        refresh_player_labels()
-        update_status_label()
+        _run_replay_action(game_controller.replay_previous)
 
     def handle_replay_next():
-        auto_play_stop()  # Stop auto-play when going to next move in replay
-        game_controller.replay_next()
-        refresh_board()
-        refresh_player_labels()
-        update_status_label()
+        _run_replay_action(game_controller.replay_next)
 
     def handle_replay_end():
-        auto_play_stop()  # Stop auto-play when going to end of replay
-        game_controller.replay_end()
-        refresh_board()
-        refresh_player_labels()
-        update_status_label()
+        _run_replay_action(game_controller.replay_end)
 
     undo_button = ttk.Button(controls, text="Undo", command=handle_undo, style="Replay.TButton")
     undo_button.pack(side="left", padx=5)
@@ -1099,17 +1077,17 @@ def run_app():
 
     result = show_mode_dialog()
     if result:
-        chosen_mode, chosen_engine, chosen_color = result
+        chosen_mode, chosen_engine, chosen_color, chosen_white_engine, chosen_black_engine = result
         if chosen_mode:
             current_mode = chosen_mode
             board_flipped = (chosen_mode == "pvai" and chosen_color == "B")
-            engine_lookup = dict(ENGINE_OPTIONS)
-            engine_factory = engine_lookup.get(chosen_engine) if chosen_engine else None
-            game_controller = mode_select(
-                current_mode,
-                engine_factory,
+            game_controller = build_controller_for_mode(
+                game_instance=game,
+                mode_key=chosen_mode,
                 player_color=chosen_color,
-                engine_label=chosen_engine
+                chosen_engine=chosen_engine,
+                chosen_white_engine=chosen_white_engine,
+                chosen_black_engine=chosen_black_engine
             )
 
     build_board(board_flipped=board_flipped)

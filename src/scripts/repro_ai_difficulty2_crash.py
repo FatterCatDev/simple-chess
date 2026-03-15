@@ -15,7 +15,7 @@ def run(max_games=200, max_plies=500):
 
         try:
             for ply in range(1, max_plies + 1):
-                ai = ai_white if game.current_turn == "white" else ai_black
+                ai = ai_white if game.current_turn == "W" else ai_black
                 move = ai.get_move(game)
                 if move is None:
                     break

@@ -5,13 +5,11 @@ class StandardChessRules:
     def __init__(self, chess_board: ChessBoard):
         self.board = chess_board
 
-    def _is_valid_square(self, square):
-        """Return True when square is valid algebraic notation like 'e4'."""
-        return isinstance(square, str) and len(square) == 2 and square[0] in FILES and square[1] in RANKS
-
     def is_valid_move(self, from_position, to_position, last_move=None):
         """Check if a move from one position to another is valid according to standard chess rules."""
-        if not self._is_valid_square(from_position) or not self._is_valid_square(to_position):
+        if not isinstance(from_position, str) or len(from_position) != 2 or from_position[0] not in FILES or from_position[1] not in RANKS:
+            return False
+        if not isinstance(to_position, str) or len(to_position) != 2 or to_position[0] not in FILES or to_position[1] not in RANKS:
             return False
 
         move_valid = False

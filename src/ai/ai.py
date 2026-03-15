@@ -12,12 +12,7 @@ class RandomAI(AIEngine):
         self.name = "Random AI | ELO: 0"
     def get_move(self, game):
         """Generate a random valid move"""
-        all_moves = []
-        for square in game.board.board:
-            piece = game.board.get_piece_at(square)
-            if piece and piece.color == game.current_turn:
-                for target_square in game.get_legal_moves(square):
-                    all_moves.append((square, target_square))
+        all_moves = game.get_all_valid_moves(game.current_turn)
         if not all_moves:
             return None  # No valid moves available
         return random.choice(all_moves)

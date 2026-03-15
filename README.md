@@ -27,6 +27,7 @@ Simple Chess/
 │   ├── ai/
 │   ├── game/
 │   ├── gui/
+│   ├── scripts/
 │   ├── tests/
 │   ├── utils/
 │   └── main.py
@@ -108,6 +109,21 @@ cd src
 
 Current result in this workspace:
 - `149 passed, 0 failed`
+
+### Running AI Stress Repro Script (Manual)
+
+This is a manual crash-reproduction/stress script (not part of unit test discovery):
+
+```bash
+# PowerShell (Windows)
+$env:PYTHONPATH="src"
+python -m scripts.repro_ai_difficulty2_crash
+```
+
+```bash
+# macOS/Linux
+PYTHONPATH=src python -m scripts.repro_ai_difficulty2_crash
+```
 
 ## Development
 
