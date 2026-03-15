@@ -445,16 +445,16 @@ def run_app():
         player_moved = False
 
         if selected:
-            piece = game.board.get_piece_at(selected)
+            piece = game_controller.game.board.get_piece_at(selected)
             if piece and piece.type == "P":
                 rank = square[1]
                 if (piece.color == "W" and rank == "8") or (piece.color == "B" and rank == "1"):
-                    target_piece = game.board.get_piece_at(square)
+                    target_piece = game_controller.game.board.get_piece_at(square)
                     is_reselect = (
                         target_piece and
-                        target_piece.color == game.current_turn and
+                        target_piece.color == game_controller.game.current_turn and
                         square != selected
-                    )
+                                        )
                     if not is_reselect:
                         is_promotion_attempt = True
                         promotion_choice = ask_promotion_choice(piece.color)
