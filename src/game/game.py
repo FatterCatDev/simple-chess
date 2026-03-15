@@ -162,7 +162,6 @@ class Game:
             "last_move": self.last_move,
             "halfmove_clock": self.halfmove_clock,
             "pre_move_halfmove_clock": pre_move_halfmove_clock,
-            "position_history": self.position_history.copy(),
             "current_turn": self.current_turn,
             "piece_first_move_status": self.piece_first_move_status,
             "was_promotion": was_promotion,
