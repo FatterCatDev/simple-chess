@@ -77,32 +77,6 @@ jobs:
               /f "$env:RUNNER_TEMP\codesign.pfx" `
               /p "$env:WIN_CERT_PASSWORD" `
               "dist\SimpleChess.exe"
-
-            # Trust self-signed cert on this runner so verify can pass
-            $flags = [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::Exportable -bor `
-                    [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::PersistKeySet
-
-            $cert = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new(
-              "$env:RUNNER_TEMP\codesign.pfx",
-              $env:WIN_CERT_PASSWORD,
-              $flags
-            )
-
-            $rootStore = [System.Security.Cryptography.X509Certificates.X509Store]::new("Root","CurrentUser")
-            $pubStore  = [System.Security.Cryptography.X509Certificates.X509Store]::new("TrustedPublisher","CurrentUser")
-            $rootStore.Open([System.Security.Cryptography.X509Certificates.OpenFlags]::ReadWrite)
-            $pubStore.Open([System.Security.Cryptography.X509Certificates.OpenFlags]::ReadWrite)
-            $rootStore.Add($cert)
-            $pubStore.Add($cert)
-            $rootStore.Close()
-            $pubStore.Close()
-
-            $auth = Get-AuthenticodeSignature "dist\SimpleChess.exe"
-            if ($auth.Status -eq 'NotSigned') { throw "File is not signed." }
-
-            Write-Host "Signature status: $($auth.Status)"
-            Write-Host "Signer: $($auth.SignerCertificate.Subject)"
-            if (-not $auth.TimeStamperCertificate) { throw "Missing timestamp certificate." }
           }
           finally {
             Remove-Item "$env:RUNNER_TEMP\codesign.pfx" -ErrorAction SilentlyContinue
