@@ -7,6 +7,8 @@ class AIEngine:
 
 class RandomAI(AIEngine):
     def __init__(self):
+        self.engine_name = "Random AI"
+        self.difficulty = 0
         self.name = "Random AI | ELO: 0"
     def get_move(self, game):
         """Generate a random valid move"""

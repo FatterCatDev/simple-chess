@@ -14,8 +14,8 @@ class GameController:
         self.ai_context = {
             "game_mode": "pvp",
             "player_color": "W",
-            "ai_white": None,
-            "ai_black": None
+            "ai_white": None if ai_white is None else {"engine": getattr(ai_white, "engine_name", None), "difficulty": getattr(ai_white, "difficulty", 0)},
+            "ai_black": None if ai_black is None else {"engine": getattr(ai_black, "engine_name", None), "difficulty": getattr(ai_black, "difficulty", 0)}
         }
 
     def get_state(self):

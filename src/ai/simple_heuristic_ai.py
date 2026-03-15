@@ -7,6 +7,7 @@ class SimpleHeuristicAI(AIEngine):
 
     def __init__(self, difficulty=1):
         super().__init__()
+        self.engine_name = "Simple Heuristic AI"
         self.name = f"Simple Heuristic AI | ELO: {difficulty * 100}"
         self.difficulty = difficulty  # Difficulty can be used to adjust the depth of move evaluation
 
