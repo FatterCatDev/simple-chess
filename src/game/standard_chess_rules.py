@@ -72,7 +72,7 @@ class StandardChessRules:
                     return True  # En passant capture
         return False
 
-    def is_valid_rook_move(self, from_position, to_position):
+    def is_valid_rook_move(self, rook, from_position, to_position):
         if from_position[0] == to_position[0] or from_position[1] == to_position[1]:  # Same file or rank
             if self.line_diagonal_clear(from_position, to_position):
                 return True
