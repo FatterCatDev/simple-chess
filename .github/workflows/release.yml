@@ -58,31 +58,41 @@ jobs:
         run: |
           Compress-Archive -Path dist/SimpleChess.exe -DestinationPath dist/SimpleChess-windows-x64.zip -Force
 
+      - name: Set package file (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          "PACKAGE_FILE=dist/SimpleChess-windows-x64.zip" >> $env:GITHUB_ENV
+
       - name: Package artifact (macOS)
         if: runner.os == 'macOS'
         run: |
           tar -czf dist/SimpleChess-macos-x64.tar.gz -C dist SimpleChess
+
+      - name: Set package file (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          echo "PACKAGE_FILE=dist/SimpleChess-macos-x64.tar.gz" >> "$GITHUB_ENV"
 
       - name: Package artifact (Linux)
         if: runner.os == 'Linux'
         run: |
           tar -czf dist/SimpleChess-linux-x64.tar.gz -C dist SimpleChess
 
+      - name: Set package file (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          echo "PACKAGE_FILE=dist/SimpleChess-linux-x64.tar.gz" >> "$GITHUB_ENV"
+
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
           name: simplechess-${{ runner.os }}
-          path: |
-            dist/SimpleChess-windows-x64.zip
-            dist/SimpleChess-macos-x64.tar.gz
-            dist/SimpleChess-linux-x64.tar.gz
+          path: ${{ env.PACKAGE_FILE }}
 
       - name: Publish to GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            dist/SimpleChess-windows-x64.zip
-            dist/SimpleChess-macos-x64.tar.gz
-            dist/SimpleChess-linux-x64.tar.gz
+          files: ${{ env.PACKAGE_FILE }}
           generate_release_notes: true
