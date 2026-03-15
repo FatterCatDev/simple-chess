@@ -6,7 +6,7 @@ This file tracks currently open issues and recently fixed bugs.
 
 ## Current Test Baseline
 
-- Automated test status: 149 passed, 0 failed
+- Automated test status: 159 passed, 0 failed
 
 ---
 
@@ -107,3 +107,25 @@ Board refresh now uses a single highlight priority chain so previous move highli
 
 Summary:
 Removed redundant position-history copy from each move-history entry to avoid O(N²) memory growth.
+
+### BUG-010: Hard AI crash risk from live-state simulation path
+
+- Area: ai
+- Severity: High
+- Status: Fixed
+- Reported: 2026-03-15
+- Fixed: 2026-03-15
+
+Summary:
+Hard `SimpleHeuristicAI` lookahead previously relied on repeated live-state mutation patterns that could leave inconsistent state during error paths. The engine now uses immutable AI simulation state and state-based legal move generation for lookahead.
+
+### BUG-011: AI autoplay tick re-entry could overlap moves
+
+- Area: gui
+- Severity: Medium
+- Status: Fixed
+- Reported: 2026-03-15
+- Fixed: 2026-03-15
+
+Summary:
+Added a non-overlapping autoplay guard so a new AI tick cannot start while one is still running, preventing overlapping turn execution.

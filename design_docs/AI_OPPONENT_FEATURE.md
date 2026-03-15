@@ -388,21 +388,21 @@ Status bar at top shows:
 #### Phase 1A: AI Simulation Engine Track (Crash-Prevention Priority)
 **Goal:** Move Hard heuristic search off live `Game` mutation and onto AI-only simulation state.
 
-- [ ] Add `src/ai/sim_state.py`
+- [x] Add `src/ai/sim_state.py`
     - Define `AIState` (board snapshot, side-to-move, castling rights, en-passant, halfmove clock)
     - Define `AIMove` (from, to, promotion, flags)
-- [ ] Add `src/ai/sim_adapter.py`
+- [x] Add `src/ai/sim_adapter.py`
     - `game_to_ai_state(game) -> AIState`
     - `ai_move_to_live_tuple(ai_move) -> (from_sq, to_sq, promotion_choice)`
-- [ ] Add `src/ai/sim_rules.py`
+- [x] Add state legal-move and apply-move functions in `src/ai/sim_adapter.py`
     - `generate_legal_moves(state)`
     - `apply_move(state, move) -> state`
     - Keep implementation minimal and focused on current built-in engine requirements
-- [ ] Update `src/ai/simple_heuristic_ai.py`
+- [x] Update `src/ai/simple_heuristic_ai.py`
     - Hard mode uses simulation path only
     - Easy mode can remain current path in first pass
     - Remove reliance on live `make_move/undo_move` within Hard search
-- [ ] Add tests in `src/tests/test_ai_engines.py`
+- [x] Add tests in `src/tests/test_ai_engines.py`
     - Hard mode returns legal move in tactical positions
     - Hard mode no longer mutates live game during search
     - Regression test for previous crash reproduction pattern
@@ -410,10 +410,10 @@ Status bar at top shows:
     - Increase iterations and assert no exception/state corruption
 
 **Definition of Done (Phase 1A):**
-- [ ] No Hard AI search path uses live `Game.undo_move()`
-- [ ] Existing unit tests still pass
+- [x] No Hard AI search path uses live `Game.undo_move()`
+- [x] Existing unit tests still pass
 - [ ] Hard AI completes long autoplay runs without crash in repro script
-- [ ] Move quality remains at least equal to current Hard baseline on tactical tests
+- [x] Move quality remains at least equal to current Hard baseline on tactical tests
 
 #### Phase 1A API Contract (Exact Signatures)
 
@@ -519,10 +519,10 @@ Implementation rule for Phase 1A:
 - [x] Player name labels above/below board reflect active game mode (e.g., "AI (Black)" / "Player 1")
 - [x] Create Setup Dialog (`show_mode_dialog()`): Tkinter Toplevel with radio buttons (PvP, PvAI, AIvAI) and Start/Cancel buttons
 - [x] Wire "New Game" and app startup to show Setup Dialog
-- [x] Wire Start → initialize `GameController` via `mode_select()` with chosen mode
+- [x] Wire Start → initialize `GameController` via centralized mode builder
 - [x] Add engine selection dropdown to Setup Dialog (Random + Simple Heuristic variants)
 - [ ] Add difficulty slider to Setup Dialog (1–20; maps to UCI depth)
-- [ ] Add auto-play loop for AI vs AI mode
+- [x] Add auto-play loop for AI vs AI mode
 - [ ] Update status label to show "AI thinking..." during move computation
 - [x] Handle game-over during AI move (dialog triggers via refresh flow)
 - [ ] Manual testing: Player vs Stockfish, Random vs Random, Heuristic vs Stockfish
@@ -533,7 +533,8 @@ Implementation rule for Phase 1A:
 
 - Implemented now: mode dialog + engine selection + player color selection + flipped board for Black player in PvAI.
 - Implemented now: first AI move triggers automatically when AI controls White at game start.
-- Not implemented yet: UCI/Stockfish integration, LLM opponent mode, dedicated AI-vs-AI continuous autoplay loop.
+- Implemented now: dedicated AI-vs-AI continuous autoplay loop with non-overlapping scheduling guard.
+- Not implemented yet: UCI/Stockfish integration, LLM opponent mode.
 
 ### Phase 3: Multi-Engine Expansion
 **Goal:** Add Leela and other UCI engines; player can choose at setup
@@ -607,12 +608,14 @@ Implementation rule for Phase 1A:
 | File | Change | Phase | Status |
 |---|---|---|---|
 | `src/ai/ai.py` | New: Base `AIEngine` class + `RandomAI` implementation (consolidated) | 1 | Done |
-| `src/ai/simple_heuristic_ai.py` | New: `SimpleHeuristicAI` implementation | 1 | Pending |
+| `src/ai/simple_heuristic_ai.py` | New: `SimpleHeuristicAI` implementation | 1 | Done |
+| `src/ai/sim_state.py` | New: immutable AI simulation state models | 1A | Done |
+| `src/ai/sim_adapter.py` | New: state adapters, legal moves, and state move application | 1A | Done |
 | `src/ai/uci_engine.py` | New: Generic `UCIEngine` wrapper for Stockfish, Leela, etc. | 1 | Pending |
 | `src/ai/config.py` | New: Engine paths and configuration | 1 | Pending |
 | `src/ai/__init__.py` | Export engine classes | 1 | Pending |
 | `src/gui/controller.py` | Update `GameController.__init__()` and add `should_ai_move()`, `make_ai_move()` | 1 | Done |
-| `src/gui/app.py` | Partial (Phase 2): RandomAI wired as Black; player labels; Setup Dialog pending | 2 | Partial |
+| `src/gui/app.py` | Setup dialog + AI autoplay loop + non-overlapping guard + debug throughput toggle | 2 | Partial |
 | `src/tests/test_ai_engines.py` | New: Unit tests for RandomAI, SimpleHeuristic, UCIEngine | 1 |
 | `src/tests/test_controller_ai.py` | New: Integration tests for GameController + AI | 1 |
 | `requirements.txt` | Add chess library and/or python-chess (Phase 1+) | 1 |

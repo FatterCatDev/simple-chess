@@ -17,7 +17,7 @@ A learning project for building a chess game in Python.
    - Player color selection for PvAI (White/Black)
 - Board orientation flips when PvAI player color is Black.
 - Previous-move highlighting is implemented (`from` and `to` squares).
-- Current automated test status: `149 passed, 0 failed`.
+- Current automated test status: `159 passed, 0 failed`.
 
 ## Project Structure
 
@@ -107,7 +107,36 @@ python -m unittest discover -s src/tests -t src
 ```
 
 Current result in this workspace:
-- `149 passed, 0 failed`
+- `159 passed, 0 failed`
+
+## Release Notes (2026-03-15)
+
+### AI Stability + Performance
+
+- Refactored Hard `SimpleHeuristicAI` search to use simulation state APIs instead of mutating live game state with repeated `make_move` / `undo_move` cycles.
+- Added state simulation modules:
+   - `src/ai/sim_state.py`
+   - `src/ai/sim_adapter.py`
+- Implemented direct state-based legal move generation and state move application for Hard AI lookahead.
+- Added bounded transposition caching in Hard AI to reduce repeated state evaluation work.
+- Added capped candidate/reply move windows in Hard AI to stabilize per-turn compute cost.
+
+### GUI Autoplay Reliability
+
+- Added non-overlapping auto-play guard in `src/gui/app.py` so AI ticks cannot re-enter while already running.
+- Kept fast AI-vs-AI scheduling (`interval = 1ms`) while improving loop safety.
+- Added optional top-bar AI debug toggle and throughput label for live tick-rate visibility.
+
+### Test Coverage
+
+- Added regression tests ensuring Hard AI move selection does not mutate live game state.
+- Added repeated-turn Hard AI stability test.
+- Added legal-move parity tests comparing state engine vs live engine across:
+   - start position,
+   - developed opening positions,
+   - en passant windows,
+   - castling available / castling rights removed scenarios.
+- Current automated suite result: `159 passed, 0 failed`.
 
 ### Running AI Stress Repro Script (Manual)
 
