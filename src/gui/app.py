@@ -409,7 +409,6 @@ def run_app():
             message = _build_game_over_message(state)
             show_game_over_dialog(message)
 
-
     def update_history_scrollbar_visibility():
         nonlocal history_scrollbar_visible
 

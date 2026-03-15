@@ -129,6 +129,33 @@ PYTHONPATH=src python -m scripts.repro_ai_difficulty2_crash
 
 This is a learning project. Feel free to experiment and expand the codebase.
 
+## GitHub Releases (Windows/macOS/Linux)
+
+This repo includes an automated workflow at [.github/workflows/release.yml](.github/workflows/release.yml) that:
+- builds on Windows, macOS, and Linux,
+- runs tests,
+- packages binaries,
+- uploads artifacts to the run,
+- and publishes files to a GitHub Release when you push a version tag.
+
+### Create a release
+
+1. Commit and push your latest code to `main`.
+2. Create and push a version tag:
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+3. Open GitHub → **Releases** to find the generated release with attached artifacts.
+
+### Notes
+
+- The workflow also supports manual start via **Actions → Build and Release → Run workflow**.
+- macOS binaries may need signing/notarization for smooth distribution outside your machine.
+- Windows binaries may show SmartScreen warnings until reputation/signing is established.
+
 ## Rules Notes
 
 - Threefold repetition uses a simplified rule in this project.
