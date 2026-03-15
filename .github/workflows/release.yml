@@ -69,30 +69,39 @@ jobs:
             Sort-Object FullName -Descending |
             Select-Object -First 1
           if (-not $signtool) { throw "signtool.exe not found on runner" }
+          try {
+            & $signtool.FullName sign `
+              /fd SHA256 `
+              /td SHA256 `
+              /tr http://timestamp.digicert.com `
+              /f "$env:RUNNER_TEMP\codesign.pfx" `
+              /p "$env:WIN_CERT_PASSWORD" `
+              "dist\SimpleChess.exe"
 
-          & $signtool.FullName sign `
-            /fd SHA256 `
-            /td SHA256 `
-            /tr http://timestamp.digicert.com `
-            /f "$env:RUNNER_TEMP\codesign.pfx" `
-            /p "$env:WIN_CERT_PASSWORD" `
-            "dist\SimpleChess.exe"
+            # Trust self-signed cert on this runner so verify can pass
+            $flags = [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::Exportable -bor `
+                    [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::PersistKeySet
 
-          # Trust self-signed cert on this runner so /pa verify can pass
-          $cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2
-          $cert.Import("$env:RUNNER_TEMP\codesign.pfx", $env:WIN_CERT_PASSWORD, "Exportable,PersistKeySet")
-          $rootStore = New-Object System.Security.Cryptography.X509Certificates.X509Store("Root","CurrentUser")
-          $pubStore  = New-Object System.Security.Cryptography.X509Certificates.X509Store("TrustedPublisher","CurrentUser")
-          $rootStore.Open("ReadWrite"); $rootStore.Add($cert); $rootStore.Close()
-          $pubStore.Open("ReadWrite");  $pubStore.Add($cert);  $pubStore.Close()
+            $cert = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new(
+              "$env:RUNNER_TEMP\codesign.pfx",
+              $env:WIN_CERT_PASSWORD,
+              $flags
+            )
 
-          & $signtool.FullName verify /pa /v "dist\SimpleChess.exe"
+            $rootStore = [System.Security.Cryptography.X509Certificates.X509Store]::new("Root","CurrentUser")
+            $pubStore  = [System.Security.Cryptography.X509Certificates.X509Store]::new("TrustedPublisher","CurrentUser")
+            $rootStore.Open([System.Security.Cryptography.X509Certificates.OpenFlags]::ReadWrite)
+            $pubStore.Open([System.Security.Cryptography.X509Certificates.OpenFlags]::ReadWrite)
+            $rootStore.Add($cert)
+            $pubStore.Add($cert)
+            $rootStore.Close()
+            $pubStore.Close()
 
-      - name: Remove signing certificate (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          Remove-Item "$env:RUNNER_TEMP\codesign.pfx" -ErrorAction SilentlyContinue
+            & $signtool.FullName verify /pa /v "dist\SimpleChess.exe"
+          }
+          finally {
+            Remove-Item "$env:RUNNER_TEMP\codesign.pfx" -ErrorAction SilentlyContinue
+          }
 
       - name: Build executable (macOS/Linux)
         if: runner.os != 'Windows'
