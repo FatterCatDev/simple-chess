@@ -97,7 +97,12 @@ jobs:
             $rootStore.Close()
             $pubStore.Close()
 
-            & $signtool.FullName verify /pa /v "dist\SimpleChess.exe"
+            $auth = Get-AuthenticodeSignature "dist\SimpleChess.exe"
+            if ($auth.Status -eq 'NotSigned') { throw "File is not signed." }
+
+            Write-Host "Signature status: $($auth.Status)"
+            Write-Host "Signer: $($auth.SignerCertificate.Subject)"
+            if (-not $auth.TimeStamperCertificate) { throw "Missing timestamp certificate." }
           }
           finally {
             Remove-Item "$env:RUNNER_TEMP\codesign.pfx" -ErrorAction SilentlyContinue
