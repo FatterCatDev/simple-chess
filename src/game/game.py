@@ -2,8 +2,9 @@ from game import piece
 
 from .board import ChessBoard
 from .standard_chess_rules import StandardChessRules
-from utils.constants import COLOR
+from utils.constants import COLOR, FILES, RANKS
 from game.piece import Queen, Rook, Bishop, Knight, Pawn
+
 
 class Game:
     def __init__(self, enable_fifty_move_rule=True):
@@ -185,9 +186,10 @@ class Game:
         """Check if the specified color is in check."""
         king_pos = self.find_king(color)
         for position, piece in self.board.board.items():
-            if piece and piece.color == self.opponent_color(color):
-                if self.rules.is_valid_move(position, king_pos, self.last_move):
-                    return True
+            if self.square_validation(position):  # Validate the square before checking for attacks
+                if piece and piece.color == self.opponent_color(color):
+                    if self.rules.is_valid_move(position, king_pos, self.last_move):
+                        return True
         return False
     
     def checkmate(self, color):
@@ -261,8 +263,12 @@ class Game:
         """Get all valid moves for the specified color."""
         valid_moves = []
         for from_position, piece in self.board.board.items():
+            if not isinstance(from_position, str) or len(from_position) != 2 or from_position[0] not in FILES or from_position[1] not in RANKS:
+                continue  # Skip invalid squares
             if piece and piece.color == color:
                 for to_position in self.board.board.keys():
+                    if not isinstance(to_position, str) or len(to_position) != 2 or to_position[0] not in FILES or to_position[1] not in RANKS:
+                        continue  # Skip invalid squares
                     if self.rules.is_valid_move(from_position, to_position, self.last_move):
                         if not self.would_be_in_check_after_move(from_position, to_position):
                             valid_moves.append((from_position, to_position))
@@ -317,13 +323,14 @@ class Game:
     def is_square_under_attack(self, position, attacking_color):
         """Check if a specific square is under attack by the specified color."""
         for from_position, piece in self.board.board.items():
-            if piece and piece.color == attacking_color:
-                if piece.type == "P":  # Special case for pawn attacks
-                    if self.rules.is_valid_pawn_attack(piece, from_position, position):
-                        return True
-                else:
-                    if self.rules.is_valid_move(from_position, position, self.last_move):
-                        return True
+            if self.square_validation(from_position):  # Validate the square before checking for attacks
+                if piece and piece.color == attacking_color:
+                    if piece.type == "P":  # Special case for pawn attacks
+                        if self.rules.is_valid_pawn_attack(piece, from_position, position):
+                            return True
+                    else:
+                        if self.rules.is_valid_move(from_position, position, self.last_move):
+                            return True
         return False
     
     def perform_castling(self, color, side):
@@ -492,8 +499,6 @@ class Game:
         """Undo the last move made in the game."""
         if not self.move_history:
             raise ValueError("No moves to undo.")
-        if self.replay_active:
-            raise ValueError("Cannot undo moves while in replay mode.")
         
         last_move = self.move_history.pop()  # Remove the last move from history
         self.position_history.pop()  # Remove the last position snapshot from position history
@@ -605,6 +610,8 @@ class Game:
     def _find_piece_for_move(self, piece_type, to_position):
         """Find the piece of the specified type that can move to the given position."""
         for from_position, piece in self.board.board.items():
+            if not self.square_validation(from_position):  # Validate the square before checking for moves
+                continue
             if piece and piece.type == piece_type and piece.color == self.current_turn:
                 if self.rules.is_valid_move(from_position, to_position, self.last_move):
                     return from_position
@@ -613,6 +620,8 @@ class Game:
     def _find_pawn_for_move(self, to_position, from_file=None):
         """Find a pawn that can legally move to the target square in current state."""
         for from_position, piece in self.board.board.items():
+            if not self.square_validation(from_position):  # Validate the square before checking for moves
+                continue
             if not piece:
                 continue
             if piece.type != "P" or piece.color != self.current_turn:
@@ -627,6 +636,8 @@ class Game:
         """Generate disambiguation for SAN notation if multiple pieces of the same type can move to the same square."""
         possible_moves = []
         for from_position, piece in self.board.board.items():
+            if not self.square_validation(from_position):  # Validate the square before checking for moves
+                continue
             if piece and piece.type == piece_type and piece.color == self.current_turn:
                 if self.rules.is_valid_move(from_position, to_position, self.last_move):
                     possible_moves.append(from_position)
@@ -667,14 +678,11 @@ class Game:
         if not self.replay_notation:
             return  # No replay notation loaded, cannot go back
         if not self.replay_active:
-            self.replay_start(self.replay_notation)  # Reset the game to the initial state of the replay
+            self.replay_active = True  # Set replay mode to active if it was not already
         if self.replay_index <= 0:
             return  # Already at the beginning of the notation list, cannot go back further
-        target_index = self.replay_index - 1  # Move to the previous move in the replay notation
-        self.replay_start(self.replay_notation)  # Reset the game to the initial state of the replay
-        for i in range(target_index):  # Replay moves up to the previous move
-            self.replayer(self.replay_notation[i])
-        self.replay_index = target_index  # Update the replay index to the previous move
+        self.undo_move()  # Undo the last move to go back in the replay
+        self.replay_index -= 1  # Move to the previous move in the replay notation
         self.replay_active = True # Set replay mode to active after replaying the previous move
 
     def replayer(self, san): # Replay a single move from the notation list in SAN format.
@@ -707,6 +715,8 @@ class Game:
         
         legal_moves = []
         for to_position in self.board.board.keys():
+            if not isinstance(to_position, str) or len(to_position) != 2 or to_position[0] not in FILES or to_position[1] not in RANKS:
+                continue  # Skip invalid squares
             if self.rules.is_valid_move(position, to_position, self.last_move):
                 if not self.would_be_in_check_after_move(position, to_position):
                     legal_moves.append(to_position)
@@ -719,3 +729,10 @@ class Game:
                     legal_moves.append(f"c{rank}")
 
         return legal_moves
+
+    def square_validation(self, square):
+        """Validate if the given square is a valid chessboard position."""
+        if not isinstance(square, str) or len(square) != 2:
+            return False
+        file, rank = square[0], square[1]
+        return file in FILES and rank in RANKS

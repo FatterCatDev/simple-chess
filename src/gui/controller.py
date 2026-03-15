@@ -1,5 +1,5 @@
 from game.game import Game
-from utils.constants import COLOR
+from utils.constants import COLOR, FILES, RANKS
 import json
 
 class GameController:
@@ -71,6 +71,8 @@ class GameController:
     def undo(self):
         """Undo the last move."""
         try:
+            if self.game.replay_active:
+                raise ValueError("Cannot undo moves while in replay mode.")
             self.game.undo_move()
             self.selected_square = None  # Clear selection after undo
             self.last_error = None  # Clear last error after undo
@@ -258,10 +260,27 @@ class GameController:
     def make_ai_move(self):
         """Make a move for the AI if it's the AI's turn."""
         ai = self.ai_white if self.game.current_turn == COLOR["white"] else self.ai_black
-        if ai is not None and not self.game.game_over:
-            move = ai.get_move(self.game)
-            if move:
-                from_sq, to_sq = move
-                self.select_square(from_sq)
-                return self.try_move(to_sq)
+        if ai is None or self.game.game_over:
             return False
+
+        move = ai.get_move(self.game)
+        if move is None:
+            return False
+
+        if not isinstance(move, tuple) or len(move) != 2:
+            self.last_error = f"Invalid AI move format: {move}"
+            return False
+
+        from_sq, to_sq = move
+        if not isinstance(from_sq, str) or len(from_sq) != 2 or from_sq[0] not in FILES or from_sq[1] not in RANKS:
+            self.last_error = f"Invalid from_square: {from_sq}"
+            return False
+        if not isinstance(to_sq, str) or len(to_sq) != 2 or to_sq[0] not in FILES or to_sq[1] not in RANKS:
+            self.last_error = f"Invalid to_square: {to_sq}"
+            return False
+
+        if not self.select_square(from_sq):
+            self.last_error = f"AI selected invalid source square: {from_sq}"
+            return False
+
+        return self.try_move(to_sq)

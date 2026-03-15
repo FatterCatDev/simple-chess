@@ -5,8 +5,15 @@ class StandardChessRules:
     def __init__(self, chess_board: ChessBoard):
         self.board = chess_board
 
+    def _is_valid_square(self, square):
+        """Return True when square is valid algebraic notation like 'e4'."""
+        return isinstance(square, str) and len(square) == 2 and square[0] in FILES and square[1] in RANKS
+
     def is_valid_move(self, from_position, to_position, last_move=None):
         """Check if a move from one position to another is valid according to standard chess rules."""
+        if not self._is_valid_square(from_position) or not self._is_valid_square(to_position):
+            return False
+
         move_valid = False
         piece = self.board.get_piece_at(from_position)
         if piece is None or from_position == to_position:
@@ -111,6 +118,8 @@ class StandardChessRules:
 
     def algebraic_to_coordinate(self, algebraic):
         """Convert algebraic notation (e.g., 'e4') to board coordinates (e.g., (4, 3))."""
+        if not isinstance(algebraic, str) or len(algebraic) != 2 or algebraic[0] not in FILES or algebraic[1] not in RANKS:
+            raise ValueError(f"Invalid algebraic notation: {algebraic}")
         file = ord(algebraic[0]) - ord('a')
         rank = int(algebraic[1]) - 1
         return (file, rank)

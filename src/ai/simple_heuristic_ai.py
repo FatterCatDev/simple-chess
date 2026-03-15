@@ -1,6 +1,6 @@
 import random
 from ai.ai import AIEngine
-from utils.constants import PIECE_VALUES
+from utils.constants import PIECE_VALUES, FILES, RANKS
 
 class SimpleHeuristicAI(AIEngine):
     """A simple heuristic-based AI engine for chess."""
@@ -23,6 +23,8 @@ class SimpleHeuristicAI(AIEngine):
         """Collect all legal moves for the current player."""
         all_moves = []
         for square in game.board.board:
+            if not isinstance(square, str) or len(square) != 2 or square[0] not in FILES or square[1] not in RANKS:
+                continue  # Skip invalid squares
             piece = game.board.get_piece_at(square)
             if piece and piece.color == game.current_turn:
                 for target_square in game.get_legal_moves(square):
@@ -50,57 +52,75 @@ class SimpleHeuristicAI(AIEngine):
     def _best_greedy_move(self, game):
         """Select the best move based on the heuristic evaluation."""
         all_moves = self._collect_all_moves(game)
-        zero_score_moves = []
-        best_move = None
+        best_moves = []
         best_score = float('-inf')
 
         for from_square, to_square in all_moves:
             score = self._evaluate_move(game, from_square, to_square)
+
             if score > best_score:
                 best_score = score
-                best_move = (from_square, to_square)
-            elif score == best_score and random.choice([True, False]):
+                best_moves = []
+                best_moves.append((from_square, to_square))
+            elif score == best_score:
                 # Randomly choose between moves with the same score to add variability
-                best_move = (from_square, to_square)
-            if score < 0:
-                # If the move is bad (score < 0), consider it as a last resort
-                zero_score_moves.append((from_square, to_square))
-        if best_score == 0:
-            # If all moves are bad (score <= 0), pick a random move to avoid losing immediately
-            return random.choice(zero_score_moves)
+                best_moves.append((from_square, to_square))
 
-        return best_move
+        if not best_moves:
+            raise ValueError("No valid moves available for the current player.")
+
+        return random.choice(best_moves)
     
     def _best_lookahead_move(self, game, moves):
         """Select the best move based on a lookahead evaluation."""
-        zero_score_moves = []
-        best_move = None
+        best_moves = []
         best_score = float('-inf')
+
         for from_square, to_square in moves:
             immediate = self._evaluate_move(game, from_square, to_square)
+
             game.make_move(from_square, to_square)
             if game.game_over:
+                is_winning_move = not game.is_draw
                 game.undo_move()
-                return (from_square, to_square)  # Immediate win
+
+                if is_winning_move:
+                    return (from_square, to_square)
+
+                lookahead = immediate
+                if lookahead > best_score:
+                    best_score = lookahead
+                    best_moves = [(from_square, to_square)]
+                elif lookahead == best_score:
+                    best_moves.append((from_square, to_square))
+
+                continue
+
             check_bonus = 0.5 if game.is_in_check else 0
             opponent_moves = self._collect_all_moves(game)
             opponent_best_score = float('-inf')
-            for opp_from, opp_to in opponent_moves:
+
+            for opponent_move in opponent_moves:
+                if not isinstance(opponent_move, tuple) or len(opponent_move) != 2:
+                    continue
+                opp_from, opp_to = opponent_move
                 opp_score = self._evaluate_move(game, opp_from, opp_to)
                 if opp_score > opponent_best_score:
                     opponent_best_score = opp_score
 
+            if opponent_best_score == float('-inf'):
+                opponent_best_score = 0
+
             lookahead = immediate - opponent_best_score + check_bonus
             game.undo_move()
+
             if lookahead > best_score:
                 best_score = lookahead
-                best_move = (from_square, to_square)
-            elif lookahead == best_score and random.choice([True, False]):
-                best_move = (from_square, to_square)
-            if lookahead == 0:
-                zero_score_moves.append((from_square, to_square))
-        if best_score == 0:
-            # If all moves are bad (score <= 0), pick a random move to avoid losing immediately
-            return random.choice(zero_score_moves)
+                best_moves = [(from_square, to_square)]
+            elif lookahead == best_score:
+                best_moves.append((from_square, to_square))
 
-        return best_move
+        if not best_moves:
+            raise ValueError("No valid moves available for the current player.")
+
+        return random.choice(best_moves)

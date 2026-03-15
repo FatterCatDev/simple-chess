@@ -15,6 +15,7 @@ from PIL import Image, ImageTk
 from utils.constants import GLOBAL_BUTTON_STYLE
 from ai.ai import RandomAI
 from ai.simple_heuristic_ai import SimpleHeuristicAI
+import traceback
 
 
 
@@ -83,6 +84,12 @@ def run_app():
     main.update_idletasks()
     _apply_dark_title_bar(main)
     main.config(bg=GLOBAL_BUTTON_STYLE["primary"])
+
+    auto_play = {
+        "enabled": False,
+        "interval": 1,  # milliseconds
+        "timer_id": None
+    }
 
     geometryX = 0
     geometryY = 0
@@ -489,8 +496,9 @@ def run_app():
 
         if player_moved:
             if game_controller.should_ai_move():
-                game_controller.make_ai_move()
-                player_moved = False # Reset player_moved after AI move
+                auto_play_start()
+            else:
+                auto_play_stop()
 
         refresh_board()
         update_status_label()
@@ -705,6 +713,47 @@ def run_app():
         main.wait_window(mode_dialog)
         return (selected_mode.get(), selected_engine.get(), selected_player_color.get()) if action["confirmed"] else None
 
+    def auto_play_start():
+        nonlocal auto_play
+        if not auto_play["enabled"]:
+            auto_play["enabled"] = True
+            auto_play_step()
+    
+    def auto_play_stop():
+        nonlocal auto_play
+        if auto_play["enabled"]:
+            auto_play["enabled"] = False
+            if auto_play["timer_id"] is not None:
+                main.after_cancel(auto_play["timer_id"])
+                auto_play["timer_id"] = None
+
+    def auto_play_step():
+        nonlocal auto_play
+        if not auto_play["enabled"]:
+            return
+
+        try:
+            if not game_controller.should_ai_move():
+                auto_play_stop()
+                return
+
+            moved = game_controller.make_ai_move()
+            refresh_board()
+            update_status_label()
+
+            if not moved or game_controller.game.game_over or not game_controller.should_ai_move():
+                auto_play_stop()
+                return
+        except Exception as e:
+            auto_play_stop()
+            game_controller.last_error = f"Auto-play error: {str(e)}"
+            update_status_label()
+            print(f"Auto-play error: {str(e)}")
+            print(traceback.format_exc())
+            return
+
+        auto_play["timer_id"] = main.after(auto_play["interval"], auto_play_step)
+
 
     #--------------------------------Build the chess board and history UI--------------------------------
 
@@ -844,6 +893,7 @@ def run_app():
 
 
     def handle_save():
+        auto_play_stop()  # Stop auto-play when saving a game
         default_filename = f"Game_{datetime.now().strftime('%d_%m_%Y_%H_%M_%S')}.json"
         file_path = filedialog.asksaveasfilename(
             defaultextension=".json",
@@ -863,8 +913,11 @@ def run_app():
                     messagebox.showerror("Save Error", f"Failed to save game state: {error}")
             except Exception as e:
                 messagebox.showerror("Save Error", f"Failed to save game state: {e}")
+        if game_controller.should_ai_move():
+            auto_play_start()  # Resume auto-play if AI should move after saving
 
     def handle_load():
+        auto_play_stop()  # Stop auto-play when loading a game
         nonlocal game_over_dialog_shown
         file_path = filedialog.askopenfilename(
             defaultextension=".json",
@@ -880,6 +933,8 @@ def run_app():
                     refresh_board()
                     update_status_label()
                     show_board_success("Game loaded")
+                    if game_controller.should_ai_move():
+                        auto_play_start()  # Resume auto-play if AI should move after loading
                 else:
                     error = game_controller.last_error or "Unknown error"
                     messagebox.showerror("Load Error", f"Failed to load game state: {error}")
@@ -887,6 +942,7 @@ def run_app():
                 messagebox.showerror("Load Error", f"Failed to load game state: {e}")
 
     def handle_new():
+        auto_play_stop()  # Stop auto-play when starting a new game
         nonlocal game, game_controller, game_over_dialog_shown, current_mode, board_flipped
         chosen_option = show_mode_dialog()
         if chosen_option is None:
@@ -907,41 +963,52 @@ def run_app():
         update_status_label()
         show_board_success("New game started")
         if game_controller.should_ai_move():
-            game_controller.make_ai_move()
-            refresh_board()
-            update_status_label()
+            auto_play_start()  # Start auto-play if AI should move first
 
 
     def handle_undo():
+        auto_play_stop()  # Stop auto-play when undoing a move
         game_controller.undo()
         refresh_board()
         update_status_label()
+        if game_controller.should_ai_move():
+            if current_mode == "aivai":
+                auto_play_start()  # Resume auto-play if AI should move after undo in AI vs AI mode
+            else:
+                auto_play_stop()  # Stop auto-play if it's not AI's turn
 
     def handle_reset():
+        auto_play_stop()  # Stop auto-play when resetting the game
         game_controller.reset()
         refresh_board()
         refresh_player_labels()
         update_status_label()
+        if game_controller.should_ai_move():
+            auto_play_start()  # Start auto-play if AI should move after reset
 
     def handle_replay_start():
+        auto_play_stop()  # Stop auto-play when starting replay
         game_controller.replay_start()
         refresh_board()
         refresh_player_labels()
         update_status_label()
 
     def handle_replay_previous():
+        auto_play_stop()  # Stop auto-play when going to previous move in replay
         game_controller.replay_previous()
         refresh_board()
         refresh_player_labels()
         update_status_label()
 
     def handle_replay_next():
+        auto_play_stop()  # Stop auto-play when going to next move in replay
         game_controller.replay_next()
         refresh_board()
         refresh_player_labels()
         update_status_label()
 
     def handle_replay_end():
+        auto_play_stop()  # Stop auto-play when going to end of replay
         game_controller.replay_end()
         refresh_board()
         refresh_player_labels()
@@ -977,9 +1044,9 @@ def run_app():
     refresh_player_labels()  # Initial player labels setup
 
     if game_controller.should_ai_move():
-        game_controller.make_ai_move()
-        refresh_board()
-        update_status_label()
+        auto_play_start()  # Start auto-play if AI should move first
+    else:
+        auto_play_stop()  # Stop auto-play if it's not AI's turn
 
     main.mainloop()
 
