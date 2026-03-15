@@ -103,8 +103,7 @@ PYTHONPATH=src python -m gui.app
 ### Running Tests
 
 ```bash
-cd src
-..\venv\Scripts\python.exe -m unittest discover -s tests
+python -m unittest discover -s src/tests -t src
 ```
 
 Current result in this workspace:
