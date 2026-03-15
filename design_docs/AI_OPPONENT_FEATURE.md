@@ -385,6 +385,109 @@ Status bar at top shows:
 ### Phase 1: Foundations (MVP)
 **Goal:** Built-in engines + Stockfish via UCI wrapper; GameController wiring; core tests
 
+#### Phase 1A: AI Simulation Engine Track (Crash-Prevention Priority)
+**Goal:** Move Hard heuristic search off live `Game` mutation and onto AI-only simulation state.
+
+- [ ] Add `src/ai/sim_state.py`
+    - Define `AIState` (board snapshot, side-to-move, castling rights, en-passant, halfmove clock)
+    - Define `AIMove` (from, to, promotion, flags)
+- [ ] Add `src/ai/sim_adapter.py`
+    - `game_to_ai_state(game) -> AIState`
+    - `ai_move_to_live_tuple(ai_move) -> (from_sq, to_sq, promotion_choice)`
+- [ ] Add `src/ai/sim_rules.py`
+    - `generate_legal_moves(state)`
+    - `apply_move(state, move) -> state`
+    - Keep implementation minimal and focused on current built-in engine requirements
+- [ ] Update `src/ai/simple_heuristic_ai.py`
+    - Hard mode uses simulation path only
+    - Easy mode can remain current path in first pass
+    - Remove reliance on live `make_move/undo_move` within Hard search
+- [ ] Add tests in `src/tests/test_ai_engines.py`
+    - Hard mode returns legal move in tactical positions
+    - Hard mode no longer mutates live game during search
+    - Regression test for previous crash reproduction pattern
+- [ ] Add optional stress test script update in `src/scripts/repro_ai_difficulty2_crash.py`
+    - Increase iterations and assert no exception/state corruption
+
+**Definition of Done (Phase 1A):**
+- [ ] No Hard AI search path uses live `Game.undo_move()`
+- [ ] Existing unit tests still pass
+- [ ] Hard AI completes long autoplay runs without crash in repro script
+- [ ] Move quality remains at least equal to current Hard baseline on tactical tests
+
+#### Phase 1A API Contract (Exact Signatures)
+
+Use these signatures as the first implementation target.
+
+`src/ai/sim_state.py`
+```python
+from dataclasses import dataclass
+from typing import Optional, Tuple
+
+Square = str  # e.g., "e4"
+PieceCode = str  # e.g., "WP", "BQ", "--"
+
+@dataclass(frozen=True)
+class AIMove:
+    from_sq: Square
+    to_sq: Square
+    promotion: Optional[str] = None  # "Q", "R", "B", "N"
+    is_capture: bool = False
+    is_castle: bool = False
+    is_en_passant: bool = False
+
+@dataclass(frozen=True)
+class AIState:
+    board: Tuple[Tuple[PieceCode, ...], ...]  # 8x8 immutable matrix
+    side_to_move: str  # "W" or "B"
+    castling_rights: str  # subset of "KQkq", or "-"
+    en_passant_target: Optional[Square]  # e.g., "e3", else None
+    halfmove_clock: int
+    fullmove_number: int
+```
+
+`src/ai/sim_adapter.py`
+```python
+from ai.sim_state import AIState, AIMove
+
+def game_to_ai_state(game) -> AIState:
+    """Convert live Game into immutable AIState snapshot."""
+
+def ai_move_to_live_tuple(move: AIMove) -> tuple[str, str, str]:
+    """Return (from_sq, to_sq, promotion_choice) for GameController/Game.make_move."""
+```
+
+`src/ai/sim_rules.py`
+```python
+from ai.sim_state import AIState, AIMove
+
+def generate_legal_moves(state: AIState) -> list[AIMove]:
+    """Return all legal moves for state.side_to_move."""
+
+def apply_move(state: AIState, move: AIMove) -> AIState:
+    """Return next immutable state after move."""
+
+def is_in_check(state: AIState, color: str) -> bool:
+    """True if color king is currently in check."""
+
+def is_terminal(state: AIState) -> tuple[bool, bool]:
+    """Return (game_over, is_draw)."""
+```
+
+`src/ai/simple_heuristic_ai.py` integration target
+```python
+def _best_lookahead_move(self, game, moves):
+    state = game_to_ai_state(game)
+    candidate_moves = generate_legal_moves(state)
+    # Evaluate using apply_move(state, move), never mutating live game.
+    # Return (from_sq, to_sq) compatible with existing controller path.
+```
+
+Implementation rule for Phase 1A:
+- Hard mode (`difficulty >= 2`) must use only `AIState` simulation functions.
+- No live `game.make_move(...)` and no live `game.undo_move()` inside Hard search path.
+- Final selected move is applied once by existing live game flow.
+
 #### Engines
 - [x] Design and implement `AIEngine` base interface (`src/ai/ai.py`)
 - [x] Implement `RandomAI` engine (built-in) (`src/ai/ai.py`)

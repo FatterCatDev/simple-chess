@@ -3,6 +3,7 @@ from game.game import Game
 from game.piece import King, Queen, Rook, Knight, Bishop, Pawn
 from utils.constants import COLOR
 from ai.simple_heuristic_ai import SimpleHeuristicAI
+from ai.sim_adapter import ai_state_to_game, game_to_ai_state
 
 
 class TestSimpleHeuristicAI(unittest.TestCase):
@@ -110,6 +111,63 @@ class TestSimpleHeuristicAI(unittest.TestCase):
 
         move = SimpleHeuristicAI(difficulty=2).get_move(game)
         self.assertEqual(move, ("h5", "f7"))
+
+    def test_difficulty2_get_move_does_not_mutate_live_game_state(self):
+        game = Game()
+        ai = SimpleHeuristicAI(difficulty=2)
+
+        pre_snapshot = game.board.get_board_snapshot()
+        pre_turn = game.current_turn
+        pre_last_move = game.last_move
+        pre_move_history_len = len(game.move_history)
+        pre_game_over = game.game_over
+        pre_draw = game.is_draw
+        pre_check = game.is_in_check
+
+        move = ai.get_move(game)
+
+        self.assertIsNotNone(move)
+        self.assertEqual(game.board.get_board_snapshot(), pre_snapshot)
+        self.assertEqual(game.current_turn, pre_turn)
+        self.assertEqual(game.last_move, pre_last_move)
+        self.assertEqual(len(game.move_history), pre_move_history_len)
+        self.assertEqual(game.game_over, pre_game_over)
+        self.assertEqual(game.is_draw, pre_draw)
+        self.assertEqual(game.is_in_check, pre_check)
+
+    def test_difficulty2_survives_repeated_live_turns(self):
+        game = Game()
+        white_ai = SimpleHeuristicAI(difficulty=2)
+        black_ai = SimpleHeuristicAI(difficulty=2)
+
+        for _ in range(30):
+            if game.game_over:
+                break
+
+            current_ai = white_ai if game.current_turn == COLOR["white"] else black_ai
+            move = current_ai.get_move(game)
+            self.assertIsNotNone(move)
+
+            from_sq, to_sq = move
+            self.assertIn(to_sq, game.get_legal_moves(from_sq))
+            game.make_move(from_sq, to_sq)
+
+        self.assertGreater(len(game.move_history), 0)
+
+    def test_ai_state_round_trip_preserves_position(self):
+        game = Game()
+        game.make_move("e2", "e4")
+        game.make_move("e7", "e5")
+
+        state = game_to_ai_state(game)
+        rebuilt = ai_state_to_game(state)
+
+        self.assertEqual(rebuilt.board.get_board_snapshot(), game.board.get_board_snapshot())
+        self.assertEqual(rebuilt.current_turn, game.current_turn)
+        self.assertEqual(rebuilt.is_in_check, game.is_in_check)
+        self.assertEqual(rebuilt.halfmove_clock, game.halfmove_clock)
+        self.assertEqual(rebuilt.last_move["from"], game.last_move["from"])
+        self.assertEqual(rebuilt.last_move["to"], game.last_move["to"])
 
 
 if __name__ == "__main__":

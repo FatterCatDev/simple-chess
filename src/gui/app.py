@@ -5,6 +5,7 @@ import ctypes
 from ctypes import wintypes
 import sys
 from datetime import datetime
+import time
 IS_WINDOWS = sys.platform.startswith("win")
 if IS_WINDOWS:
     import winreg
@@ -86,8 +87,44 @@ def run_app():
     auto_play = {
         "enabled": False,
         "interval": 1,  # milliseconds
-        "timer_id": None
+        "timer_id": None,
+        "running": False,
+        "debug": False,
+        "tick_count": 0,
+        "debug_start": 0.0,
+        "debug_log_every": 100,
+        "debug_ui_every": 20,
     }
+
+    debug_enabled_var = tk.BooleanVar(value=False)
+    debug_status_var = tk.StringVar(value="AI dbg: off")
+
+    def update_auto_play_debug_label():
+        if not auto_play["debug"]:
+            debug_status_var.set("AI dbg: off")
+            debug_label.config(fg="#cbd5e1")
+            return
+
+        if auto_play["tick_count"] <= 0:
+            debug_status_var.set("AI dbg: on")
+            debug_label.config(fg="#93c5fd")
+            return
+
+        elapsed = max(0.001, time.perf_counter() - auto_play["debug_start"])
+        rate = auto_play["tick_count"] / elapsed
+        debug_status_var.set(f"AI dbg: {auto_play['tick_count']} | {rate:.1f}/s")
+        if rate >= 80:
+            debug_label.config(fg="#86efac")
+        elif rate >= 30:
+            debug_label.config(fg="#fde68a")
+        else:
+            debug_label.config(fg="#fca5a5")
+
+    def toggle_auto_play_debug():
+        auto_play["debug"] = debug_enabled_var.get()
+        auto_play["tick_count"] = 0
+        auto_play["debug_start"] = time.perf_counter()
+        update_auto_play_debug_label()
 
     geometryX = 0
     geometryY = 0
@@ -117,6 +154,33 @@ def run_app():
         pady=4,
     )
     game_button.pack(side="left", padx=(6, 2), pady=2)
+
+    debug_toggle = tk.Checkbutton(
+        top_bar,
+        text="AI Debug",
+        variable=debug_enabled_var,
+        command=toggle_auto_play_debug,
+        bg="#1f2933",
+        fg="#ffffff",
+        activebackground="#1f2933",
+        activeforeground="#ffffff",
+        selectcolor="#334155",
+        relief="flat",
+        borderwidth=0,
+        highlightthickness=0,
+        padx=6,
+        pady=2,
+    )
+    debug_toggle.pack(side="left", padx=(4, 2), pady=2)
+
+    debug_label = tk.Label(
+        top_bar,
+        textvariable=debug_status_var,
+        bg="#1f2933",
+        fg="#cbd5e1",
+        font=("Helvetica", 10),
+    )
+    debug_label.pack(side="left", padx=(4, 8), pady=2)
 
     game_menu = tk.Menu(
         game_button,
@@ -738,20 +802,30 @@ def run_app():
         nonlocal auto_play
         if not auto_play["enabled"]:
             auto_play["enabled"] = True
+            auto_play["tick_count"] = 0
+            auto_play["debug_start"] = time.perf_counter()
+            update_auto_play_debug_label()
             auto_play_step()
     
     def auto_play_stop():
         nonlocal auto_play
         if auto_play["enabled"]:
             auto_play["enabled"] = False
+            auto_play["running"] = False
             if auto_play["timer_id"] is not None:
                 main.after_cancel(auto_play["timer_id"])
                 auto_play["timer_id"] = None
+        update_auto_play_debug_label()
 
     def auto_play_step():
         nonlocal auto_play
         if not auto_play["enabled"]:
             return
+
+        if auto_play["running"]:
+            return
+
+        auto_play["running"] = True
 
         try:
             if not game_controller.should_ai_move():
@@ -759,6 +833,13 @@ def run_app():
                 return
 
             moved = game_controller.make_ai_move()
+            auto_play["tick_count"] += 1
+            if auto_play["debug"] and auto_play["tick_count"] % auto_play["debug_log_every"] == 0:
+                elapsed = max(0.001, time.perf_counter() - auto_play["debug_start"])
+                rate = auto_play["tick_count"] / elapsed
+                print(f"[auto_play] ticks={auto_play['tick_count']} elapsed={elapsed:.2f}s rate={rate:.1f} ticks/s")
+            if auto_play["debug"] and auto_play["tick_count"] % auto_play["debug_ui_every"] == 0:
+                update_auto_play_debug_label()
             refresh_board()
             update_status_label()
 
@@ -772,6 +853,8 @@ def run_app():
             print(f"Auto-play error: {str(e)}")
             print(traceback.format_exc())
             return
+        finally:
+            auto_play["running"] = False
 
         auto_play["timer_id"] = main.after(auto_play["interval"], auto_play_step)
 
