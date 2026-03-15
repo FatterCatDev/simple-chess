@@ -110,9 +110,8 @@ dialog.geometry(f"+{x}+{y}")
 
 ### 7a. Define the function
 
-Add a new inner function `show_game_over_dialog(message)` inside `run_app()`, directly
-below the existing `ask_promotion_choice` function (around line 247). It follows the same
-`tk.Toplevel` pattern as `ask_promotion_choice`.
+Add a new inner function `show_game_over_dialog(message)` inside `run_app()`, near the
+existing `ask_promotion_choice` helper. It follows the same `tk.Toplevel` pattern.
 
 ### 7b. Call the function
 

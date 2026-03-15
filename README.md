@@ -17,7 +17,7 @@ A learning project for building a chess game in Python.
    - Player color selection for PvAI (White/Black)
 - Board orientation flips when PvAI player color is Black.
 - Previous-move highlighting is implemented (`from` and `to` squares).
-- Current automated test status: `139 passed, 2 failed`.
+- Current automated test status: `149 passed, 0 failed`.
 
 ## Project Structure
 
@@ -102,12 +102,12 @@ PYTHONPATH=src python -m gui.app
 ### Running Tests
 
 ```bash
-python -m unittest discover -s src/tests
+cd src
+..\venv\Scripts\python.exe -m unittest discover -s tests
 ```
 
 Current result in this workspace:
-- `139 passed, 2 failed`
-- Failing tests are both in `test_rules.py` and expect out-of-bounds moves to return `False` instead of raising `ValueError`.
+- `149 passed, 0 failed`
 
 ## Development
 
@@ -122,7 +122,6 @@ This is a learning project. Feel free to experiment and expand the codebase.
 
 ## Known Issues
 
-- Current test suite is not fully green (`139 passed, 2 failed`).
 - See `design_docs/KNOWN_BUGS.md` for tracked issues and status.
 
 ## License

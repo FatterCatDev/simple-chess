@@ -15,9 +15,9 @@ This feature adds AI-powered opponents to Simple Chess. The current implementati
 - [ ] Optional LLM Opponent mode available
 - [ ] LLM Opponent uses the user's own account (OpenAI or GitHub) for model access
 - [x] Game modes: Player vs AI, AI vs AI
-- [ ] AI makes legal moves respecting all chess rules
-- [ ] Game ends correctly after AI move (e.g., if AI move leads to checkmate)
-- [ ] Replay controls work with games played against AI
+- [x] AI makes legal moves respecting all chess rules
+- [x] Game ends correctly after AI move (e.g., if AI move leads to checkmate)
+- [x] Replay controls work with games played against AI
 - [ ] Save/load preserves the AI selection and difficulty for context
 - [x] UI flow to select game mode, AI engine, and player color before play
 
@@ -85,7 +85,7 @@ Each user authorizes their own account and quota.
 
 ### 4.2 AI vs AI
 - Two AI engines (may be same model at different difficulties or different models)
-- Current behavior: one side moves when AI turn is triggered through existing move flow; continuous autonomous loop is not implemented yet
+- Current behavior: continuous autonomous loop is implemented through auto-play scheduling while AI still has turns
 - Player can watch or step through using replay controls
 - Game runs at a configurable pace (instant, 1 sec per move, etc.)
 
@@ -170,7 +170,7 @@ class UCIEngine(AIEngine):
 
 #### 5.2.5 Simple Heuristic
 - Evaluates all legal moves using hand-crafted scoring (captures > checks > piece safety > mobility)
-- Difficulty levels: 1=greedy (pick highest immediate score), 2=lookahead 1 move, 3=lookahead 1 move for both sides (minimax-ish)
+- Difficulty levels currently implemented: 1=greedy and 2=lookahead
 - Fast, no engine binary required
 - **Status: Implemented** (`src/ai/simple_heuristic_ai.py`)
 
