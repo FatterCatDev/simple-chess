@@ -404,6 +404,82 @@ def would_be_in_check_after_state_move(state, from_square, to_square):
     return is_in_check_state(next_state, state.current_turn)
 
 
+def _generate_pseudo_targets_for_piece(state, piece, piece_map):
+    targets = []
+    from_square = piece.position
+    from_file, from_rank = _square_to_coords(from_square)
+
+    def add_target_if_enemy_or_empty(file_index, rank_index):
+        square = _coords_to_square(file_index, rank_index)
+        if square is None:
+            return
+        target_piece = piece_map.get(square)
+        if target_piece is None or target_piece.color != piece.color:
+            targets.append(square)
+
+    if piece.piece_type == "P":
+        direction = 1 if piece.color == "W" else -1
+        start_rank = 1 if piece.color == "W" else 6
+
+        one_step = _coords_to_square(from_file, from_rank + direction)
+        if one_step and one_step not in piece_map:
+            targets.append(one_step)
+            two_step = _coords_to_square(from_file, from_rank + (2 * direction))
+            if from_rank == start_rank and two_step and two_step not in piece_map:
+                targets.append(two_step)
+
+        for file_step in (-1, 1):
+            capture_square = _coords_to_square(from_file + file_step, from_rank + direction)
+            if capture_square is None:
+                continue
+            target_piece = piece_map.get(capture_square)
+            if target_piece and target_piece.color != piece.color:
+                targets.append(capture_square)
+            elif is_en_passant_possible_state(state, from_square, capture_square):
+                targets.append(capture_square)
+
+        return targets
+
+    if piece.piece_type == "N":
+        for file_step, rank_step in [(2, 1), (2, -1), (-2, 1), (-2, -1), (1, 2), (1, -2), (-1, 2), (-1, -2)]:
+            add_target_if_enemy_or_empty(from_file + file_step, from_rank + rank_step)
+        return targets
+
+    if piece.piece_type == "K":
+        for file_step in (-1, 0, 1):
+            for rank_step in (-1, 0, 1):
+                if file_step == 0 and rank_step == 0:
+                    continue
+                add_target_if_enemy_or_empty(from_file + file_step, from_rank + rank_step)
+        return targets
+
+    directions = []
+    if piece.piece_type in {"B", "Q"}:
+        directions.extend([(1, 1), (1, -1), (-1, 1), (-1, -1)])
+    if piece.piece_type in {"R", "Q"}:
+        directions.extend([(1, 0), (-1, 0), (0, 1), (0, -1)])
+
+    for file_step, rank_step in directions:
+        current_file = from_file + file_step
+        current_rank = from_rank + rank_step
+
+        while 0 <= current_file < 8 and 0 <= current_rank < 8:
+            square = _coords_to_square(current_file, current_rank)
+            target_piece = piece_map.get(square)
+
+            if target_piece is None:
+                targets.append(square)
+            else:
+                if target_piece.color != piece.color:
+                    targets.append(square)
+                break
+
+            current_file += file_step
+            current_rank += rank_step
+
+    return targets
+
+
 def generate_legal_moves_on_state(state):
     piece_map = build_piece_map(state)
     legal_moves = []
@@ -412,12 +488,9 @@ def generate_legal_moves_on_state(state):
         if piece.color != state.current_turn:
             continue
 
-        for rank in RANKS:
-            for file in FILES:
-                to_square = f"{file}{rank}"
-                if is_valid_state_move(state, piece.position, to_square, piece_map):
-                    if not would_be_in_check_after_state_move(state, piece.position, to_square):
-                        legal_moves.append((piece.position, to_square))
+        for to_square in _generate_pseudo_targets_for_piece(state, piece, piece_map):
+            if not would_be_in_check_after_state_move(state, piece.position, to_square):
+                legal_moves.append((piece.position, to_square))
 
         if piece.piece_type == "K":
             rank = "1" if piece.color == "W" else "8"

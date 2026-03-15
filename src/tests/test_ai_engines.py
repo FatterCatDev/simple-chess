@@ -3,7 +3,7 @@ from game.game import Game
 from game.piece import King, Queen, Rook, Knight, Bishop, Pawn
 from utils.constants import COLOR
 from ai.simple_heuristic_ai import SimpleHeuristicAI
-from ai.sim_adapter import ai_state_to_game, game_to_ai_state
+from ai.sim_adapter import ai_state_to_game, game_to_ai_state, generate_legal_moves_on_state
 
 
 class TestSimpleHeuristicAI(unittest.TestCase):
@@ -11,6 +11,12 @@ class TestSimpleHeuristicAI(unittest.TestCase):
     def _clear_board(self, game):
         for sq in list(game.board.board.keys()):
             game.board.remove_piece_at(sq)
+
+    def _assert_state_move_parity(self, game):
+        live_moves = sorted(game.get_all_valid_moves(game.current_turn))
+        state = game_to_ai_state(game)
+        state_moves = sorted(generate_legal_moves_on_state(state))
+        self.assertEqual(state_moves, live_moves)
 
     # ------------------------------------------------------------------
     # Basic contract
@@ -168,6 +174,73 @@ class TestSimpleHeuristicAI(unittest.TestCase):
         self.assertEqual(rebuilt.halfmove_clock, game.halfmove_clock)
         self.assertEqual(rebuilt.last_move["from"], game.last_move["from"])
         self.assertEqual(rebuilt.last_move["to"], game.last_move["to"])
+
+    def test_state_legal_move_parity_from_start(self):
+        game = Game()
+        self._assert_state_move_parity(game)
+
+    def test_state_legal_move_parity_after_opening_sequence(self):
+        game = Game()
+        sequence = [
+            ("e2", "e4"),
+            ("e7", "e5"),
+            ("g1", "f3"),
+            ("b8", "c6"),
+            ("f1", "c4"),
+            ("g8", "f6"),
+            ("d2", "d3"),
+            ("f8", "c5"),
+        ]
+        for from_sq, to_sq in sequence:
+            game.make_move(from_sq, to_sq)
+
+        self._assert_state_move_parity(game)
+
+    def test_state_legal_move_parity_after_en_passant_window(self):
+        game = Game()
+        sequence = [
+            ("e2", "e4"),
+            ("a7", "a6"),
+            ("e4", "e5"),
+            ("d7", "d5"),
+        ]
+        for from_sq, to_sq in sequence:
+            game.make_move(from_sq, to_sq)
+
+        self._assert_state_move_parity(game)
+
+    def test_state_legal_move_parity_when_castling_available(self):
+        game = Game()
+        sequence = [
+            ("e2", "e4"),
+            ("a7", "a6"),
+            ("g1", "f3"),
+            ("a6", "a5"),
+            ("f1", "c4"),
+            ("h7", "h6"),
+        ]
+        for from_sq, to_sq in sequence:
+            game.make_move(from_sq, to_sq)
+
+        self._assert_state_move_parity(game)
+        self.assertIn(("e1", "g1"), game.get_all_valid_moves(game.current_turn))
+
+    def test_state_legal_move_parity_after_king_moves_no_castle(self):
+        game = Game()
+        sequence = [
+            ("e2", "e4"),
+            ("a7", "a6"),
+            ("e1", "e2"),
+            ("a6", "a5"),
+            ("e2", "e1"),
+            ("a5", "a4"),
+        ]
+        for from_sq, to_sq in sequence:
+            game.make_move(from_sq, to_sq)
+
+        self._assert_state_move_parity(game)
+        self.assertNotIn(("e1", "g1"), game.get_all_valid_moves(game.current_turn))
+        self.assertNotIn(("e1", "c1"), game.get_all_valid_moves(game.current_turn))
 
 
 if __name__ == "__main__":
