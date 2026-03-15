@@ -56,7 +56,7 @@ jobs:
           if ([string]::IsNullOrWhiteSpace($env:WIN_CERT_PFX_BASE64)) { throw "Missing secret WIN_CERT_PFX_BASE64" }
           [IO.File]::WriteAllBytes("$env:RUNNER_TEMP\codesign.pfx", [Convert]::FromBase64String($env:WIN_CERT_PFX_BASE64))
 
-      - name: Sign executable (Windows)
+      - name: Sign and verify executable (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         env:
@@ -68,7 +68,6 @@ jobs:
             Where-Object { $_.FullName -match "\\x64\\signtool\.exe$" } |
             Sort-Object FullName -Descending |
             Select-Object -First 1
-
           if (-not $signtool) { throw "signtool.exe not found on runner" }
 
           & $signtool.FullName sign `
@@ -79,6 +78,15 @@ jobs:
             /p "$env:WIN_CERT_PASSWORD" `
             "dist\SimpleChess.exe"
 
+          # Trust self-signed cert on this runner so /pa verify can pass
+          $cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2
+          $cert.Import("$env:RUNNER_TEMP\codesign.pfx", $env:WIN_CERT_PASSWORD, "Exportable,PersistKeySet")
+          $rootStore = New-Object System.Security.Cryptography.X509Certificates.X509Store("Root","CurrentUser")
+          $pubStore  = New-Object System.Security.Cryptography.X509Certificates.X509Store("TrustedPublisher","CurrentUser")
+          $rootStore.Open("ReadWrite"); $rootStore.Add($cert); $rootStore.Close()
+          $pubStore.Open("ReadWrite");  $pubStore.Add($cert);  $pubStore.Close()
+
+          & $signtool.FullName verify /pa /v "dist\SimpleChess.exe"
           & $signtool.FullName verify /pa /v "dist\SimpleChess.exe"
 
       - name: Remove signing certificate (Windows)
