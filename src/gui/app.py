@@ -1044,6 +1044,19 @@ def run_app():
                     loaded_moves = game_controller.game.export_notation()  # Export the current game notation before reinitializing
                     ai_white = build_ai_from_meta(loaded_ai_white) if loaded_ai_white else None
                     ai_black = build_ai_from_meta(loaded_ai_black) if loaded_ai_black else None
+                    
+                    # Call _.stop() on the existing AI instances before creating new ones
+                    if game_controller.ai_white and hasattr(game_controller.ai_white, "_stop"):
+                        try:
+                            game_controller.ai_white._stop()
+                        except Exception as e:
+                            print(f"Error stopping AI White: {e}")
+                    if game_controller.ai_black and hasattr(game_controller.ai_black, "_stop"):
+                        try:
+                            game_controller.ai_black._stop()
+                        except Exception as e:
+                            print(f"Error stopping AI Black: {e}")
+
                     game_controller = GameController(
                         game=game_controller.game,
                         ai_white=ai_white,
@@ -1087,6 +1100,19 @@ def run_app():
         current_mode = chosen_mode
         board_flipped = (chosen_mode == "pvai" and chosen_color == "B")
         game_over_dialog_shown = False  # Reset the flag when starting a new game
+
+        # Call _.stop() on the existing AI instances before creating new ones
+        if game_controller.ai_white and hasattr(game_controller.ai_white, "_stop"):
+            try:
+                game_controller.ai_white._stop()
+            except Exception as e:
+                print(f"Error stopping AI White: {e}")
+        if game_controller.ai_black and hasattr(game_controller.ai_black, "_stop"):
+            try:
+                game_controller.ai_black._stop()
+            except Exception as e:
+                print(f"Error stopping AI Black: {e}")
+
         game_controller = build_controller_for_mode(
             game_instance=Game(),
             mode_key=chosen_mode,
@@ -1163,6 +1189,19 @@ def run_app():
         if chosen_mode:
             current_mode = chosen_mode
             board_flipped = (chosen_mode == "pvai" and chosen_color == "B")
+
+            # Call _.stop() on the existing AI instances before creating new ones
+            if game_controller.ai_white and hasattr(game_controller.ai_white, "_stop"):
+                try:
+                    game_controller.ai_white._stop()
+                except Exception as e:
+                    print(f"Error stopping AI White: {e}")
+            if game_controller.ai_black and hasattr(game_controller.ai_black, "_stop"):
+                try:
+                    game_controller.ai_black._stop()
+                except Exception as e:
+                    print(f"Error stopping AI Black: {e}")
+
             game_controller = build_controller_for_mode(
                 game_instance=game,
                 mode_key=chosen_mode,
@@ -1182,6 +1221,22 @@ def run_app():
     else:
         auto_play_stop()  # Stop auto-play if it's not AI's turn
 
+    # Ensure that AI instances are stopped when the application is closed
+    def on_main_close():
+        auto_play_stop()  # Stop auto-play when closing the application
+        if game_controller.ai_white and hasattr(game_controller.ai_white, "_stop"):
+            try:
+                game_controller.ai_white._stop()
+            except Exception as e:
+                print(f"Error stopping AI White: {e}")
+        if game_controller.ai_black and hasattr(game_controller.ai_black, "_stop"):
+            try:
+                game_controller.ai_black._stop()
+            except Exception as e:
+                print(f"Error stopping AI Black: {e}")
+        main.destroy()
+
+    main.protocol("WM_DELETE_WINDOW", on_main_close)
     main.mainloop()
 
 if __name__ == "__main__":
