@@ -43,6 +43,10 @@ def resolve_stockfish_binary_path():
             secondary_path.append(path)
     if not primary_path and not secondary_path:
         return None, None
+    elif primary_path and not secondary_path:
+        return primary_path[0], None
+    elif not primary_path and secondary_path:
+        return secondary_path[0], None
     return primary_path[0], secondary_path[0] if secondary_path else None
 
 def stockfish_factory(difficulty=1):
