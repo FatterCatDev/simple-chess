@@ -287,8 +287,12 @@ class GameController:
         ai = self.ai_white if self.game.current_turn == COLOR["white"] else self.ai_black
         if ai is None or self.game.game_over:
             return False
+        try:    
+            move = ai.get_move(self.game)
+        except Exception as e:
+            self.last_error = f"AI move generation failed: {e}"
+            return False
 
-        move = ai.get_move(self.game)
         if move is None:
             return False
 

@@ -82,10 +82,27 @@ jobs:
             Remove-Item "$env:RUNNER_TEMP\codesign.pfx" -ErrorAction SilentlyContinue
           }
 
-      - name: Build executable (macOS/Linux)
-        if: runner.os != 'Windows'
+      - name: Ensure Stockfish executable bits (macOS)
+        if: runner.os == 'macOS'
         run: |
-          pyinstaller --noconfirm --clean --onefile --windowed --name SimpleChess --add-data "src/gui/assets:gui/assets" src/main.py
+          chmod +x src/ai/stockfish/macos/avx2/stockfish-macos-x86-64-avx2
+          chmod +x src/ai/stockfish/macos/non-avx2/stockfish-macos-x86-64
+
+      - name: Build executable (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          pyinstaller --noconfirm --clean --onefile --windowed --name SimpleChess --add-data "src/gui/assets:gui/assets" --add-binary "src/ai/stockfish/macos/avx2/stockfish-macos-x86-64-avx2:ai/stockfish/macos/avx2" --add-binary "src/ai/stockfish/macos/non-avx2/stockfish-macos-x86-64:ai/stockfish/macos/non-avx2" --add-data "src/ai/stockfish/shared:ai/stockfish/shared" src/main.py
+
+      - name: Ensure Stockfish executable bits (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          chmod +x src/ai/stockfish/ubuntu/avx2/stockfish-ubuntu-x86-64-avx2
+          chmod +x src/ai/stockfish/ubuntu/non-avx2/stockfish-ubuntu-x86-64
+
+      - name: Build executable (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          pyinstaller --noconfirm --clean --onefile --windowed --name SimpleChess --add-data "src/gui/assets:gui/assets" --add-binary "src/ai/stockfish/ubuntu/avx2/stockfish-ubuntu-x86-64-avx2:ai/stockfish/ubuntu/avx2" --add-binary "src/ai/stockfish/ubuntu/non-avx2/stockfish-ubuntu-x86-64:ai/stockfish/ubuntu/non-avx2" --add-data "src/ai/stockfish/shared:ai/stockfish/shared" src/main.py
 
       - name: Package artifact (Windows)
         if: runner.os == 'Windows'

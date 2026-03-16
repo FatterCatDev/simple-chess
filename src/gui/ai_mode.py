@@ -3,7 +3,6 @@ from ai.simple_heuristic_ai import SimpleHeuristicAI
 from gui.controller import GameController
 from ai.uci_engine import UCIEngine
 from pathlib import Path
-import os
 import sys
 
 ENGINE_OPTIONS = [
@@ -24,12 +23,27 @@ def find_app_base_path():
 
 def resolve_stockfish_binary_path():
     base = find_app_base_path()
-    candidates = [
-        base / "ai/stockfish/windows/avx2/stockfish-windows-x86-64-avx2.exe",
-        base / "ai/stockfish/windows/non-avx2/stockfish-windows-x86-64.exe",
-        base / "src/ai/stockfish/windows/avx2/stockfish-windows-x86-64-avx2.exe",
-        base / "src/ai/stockfish/windows/non-avx2/stockfish-windows-x86-64.exe",
-    ]
+    if sys.platform.startswith("win"): # Windows
+        candidates = [
+            base / "ai/stockfish/windows/avx2/stockfish-windows-x86-64-avx2.exe",
+            base / "ai/stockfish/windows/non-avx2/stockfish-windows-x86-64.exe",
+            base / "src/ai/stockfish/windows/avx2/stockfish-windows-x86-64-avx2.exe",
+            base / "src/ai/stockfish/windows/non-avx2/stockfish-windows-x86-64.exe",
+        ]
+    elif sys.platform.startswith("darwin"):  # macOS
+        candidates = [
+            base / "ai/stockfish/macos/avx2/stockfish-macos-x86-64-avx2",
+            base / "ai/stockfish/macos/non-avx2/stockfish-macos-x86-64",
+            base / "src/ai/stockfish/macos/avx2/stockfish-macos-x86-64-avx2",
+            base / "src/ai/stockfish/macos/non-avx2/stockfish-macos-x86-64",
+        ]
+    else:  # Assume Linux or other Unix-like OS
+        candidates = [
+            base / "ai/stockfish/ubuntu/avx2/stockfish-ubuntu-x86-64-avx2",
+            base / "ai/stockfish/ubuntu/non-avx2/stockfish-ubuntu-x86-64",
+            base / "src/ai/stockfish/ubuntu/avx2/stockfish-ubuntu-x86-64-avx2",
+            base / "src/ai/stockfish/ubuntu/non-avx2/stockfish-ubuntu-x86-64",
+        ]
     possible_paths = []
     primary_path = []
     secondary_path = []
@@ -37,10 +51,11 @@ def resolve_stockfish_binary_path():
         if path.exists():
             possible_paths.append(path)
     for path in possible_paths:
-        if "avx2" in str(path):
-            primary_path.append(path)
-        else:
+        p = path.as_posix()
+        if "/non-avx2/" in p:
             secondary_path.append(path)
+        elif "/avx2/" in p:
+            primary_path.append(path)
     if not primary_path and not secondary_path:
         return None, None
     elif primary_path and not secondary_path:

@@ -176,4 +176,8 @@ class UCIEngine:
                 return None  # No valid move available
             return best_move
         except Exception as e:
+            try:
+                self._stop()  # Ensure the engine process is stopped on error
+            except Exception as stop_exception:
+                print(f"Failed to stop UCI engine process: {stop_exception}")
             raise RuntimeError(f"Failed to get move from UCI engine: {e}")
