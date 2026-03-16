@@ -126,7 +126,7 @@ jobs:
       - name: Build executable (macOS)
         if: runner.os == 'macOS'
         run: |
-          pyinstaller --noconfirm --clean SimpleChess.spec
+          pyinstaller --noconfirm --clean --windowed --name SimpleChess --add-data "src/gui/assets:gui/assets" --add-binary "src/ai/stockfish/macos/avx2/stockfish-macos-x86-64-avx2:ai/stockfish/macos/avx2" --add-binary "src/ai/stockfish/macos/non-avx2/stockfish-macos-x86-64:ai/stockfish/macos/non-avx2" --add-data "src/ai/stockfish/shared:ai/stockfish/shared" src/main.py
 
       - name: Ensure Stockfish executable bits (Linux)
         if: runner.os == 'Linux'
@@ -138,6 +138,32 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           pyinstaller --noconfirm --clean SimpleChess.spec
+
+      - name: Build AppImage (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          rm -rf AppDir
+          mkdir -p AppDir/usr/bin
+          cp dist/SimpleChess AppDir/usr/bin/SimpleChess
+          chmod +x AppDir/usr/bin/SimpleChess
+          cp src/gui/assets/wK.png AppDir/simplechess.png
+          cat > AppDir/simplechess.desktop << 'EOF'
+          [Desktop Entry]
+          Type=Application
+          Name=Simple Chess
+          Exec=SimpleChess
+          Icon=simplechess
+          Categories=Game;
+          EOF
+          cat > AppDir/AppRun << 'EOF'
+          #!/bin/sh
+          HERE="$(dirname "$(readlink -f "$0")")"
+          exec "$HERE/usr/bin/SimpleChess" "$@"
+          EOF
+          chmod +x AppDir/AppRun
+          wget -q -O appimagetool-x86_64.AppImage "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage"
+          chmod +x appimagetool-x86_64.AppImage
+          APPIMAGE_EXTRACT_AND_RUN=1 ./appimagetool-x86_64.AppImage AppDir dist/SimpleChess-linux-x64.AppImage
 
       - name: Package artifact (Windows)
         if: runner.os == 'Windows'
@@ -156,22 +182,29 @@ jobs:
       - name: Package artifact (macOS)
         if: runner.os == 'macOS'
         run: |
-          tar -czf dist/SimpleChess-macos-x64.tar.gz -C dist SimpleChess
+          if [ ! -d dist/SimpleChess.app ]; then
+            echo "macOS app bundle was not produced"
+            exit 1
+          fi
+          tar -czf dist/SimpleChess-macos-x64.app.tar.gz -C dist SimpleChess.app
 
       - name: Set package file (macOS)
         if: runner.os == 'macOS'
         run: |
-          echo "PACKAGE_FILE=dist/SimpleChess-macos-x64.tar.gz" >> "$GITHUB_ENV"
+          echo "PACKAGE_FILE=dist/SimpleChess-macos-x64.app.tar.gz" >> "$GITHUB_ENV"
 
       - name: Package artifact (Linux)
         if: runner.os == 'Linux'
         run: |
-          tar -czf dist/SimpleChess-linux-x64.tar.gz -C dist SimpleChess
+          if [ ! -f dist/SimpleChess-linux-x64.AppImage ]; then
+            echo "Linux AppImage was not produced"
+            exit 1
+          fi
 
       - name: Set package file (Linux)
         if: runner.os == 'Linux'
         run: |
-          echo "PACKAGE_FILE=dist/SimpleChess-linux-x64.tar.gz" >> "$GITHUB_ENV"
+          echo "PACKAGE_FILE=dist/SimpleChess-linux-x64.AppImage" >> "$GITHUB_ENV"
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
