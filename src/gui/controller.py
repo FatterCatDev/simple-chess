@@ -292,20 +292,26 @@ class GameController:
         if move is None:
             return False
 
-        if not isinstance(move, tuple) or len(move) != 2:
+        if not isinstance(move, tuple) or not (2 <= len(move) <= 3):
             self.last_error = f"Invalid AI move format: {move}"
             return False
-
-        from_sq, to_sq = move
+        if len(move) == 3:
+            from_sq, to_sq, promotion_choice = move
+        else:
+            from_sq, to_sq = move
+            promotion_choice = "Q"  # Default promotion choice if not provided
         if not isinstance(from_sq, str) or len(from_sq) != 2 or from_sq[0] not in FILES or from_sq[1] not in RANKS:
             self.last_error = f"Invalid from_square: {from_sq}"
             return False
         if not isinstance(to_sq, str) or len(to_sq) != 2 or to_sq[0] not in FILES or to_sq[1] not in RANKS:
             self.last_error = f"Invalid to_square: {to_sq}"
             return False
+        if promotion_choice is not None and (not isinstance(promotion_choice, str) or promotion_choice.upper() not in ["Q", "R", "B", "N"]):
+            self.last_error = f"Invalid promotion choice: {promotion_choice}"
+            return False
 
         if not self.select_square(from_sq):
             self.last_error = f"AI selected invalid source square: {from_sq}"
             return False
 
-        return self.try_move(to_sq)
+        return self.try_move(to_sq, promotion_choice)
