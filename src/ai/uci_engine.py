@@ -36,11 +36,7 @@ class UCIEngine:
                         print(f"Warning: Failed to set executable permissions for {self.binary_path}: {e}")
                 self.process = subprocess.Popen(
                     [self.binary_path],
-                    stdin=subprocess.PIPE,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT,
-                    text=True,
-                    bufsize=1,  # Line-buffered
+                    **self._subprocess_kwargs()
                 )
             else:
                 raise ValueError("Primary binary path is not set for UCI engine.")
@@ -54,11 +50,7 @@ class UCIEngine:
                             print(f"Warning: Failed to set executable permissions for {self.secondary_binary_path}: {e}")
                     self.process = subprocess.Popen(
                         [self.secondary_binary_path],
-                        stdin=subprocess.PIPE,
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.STDOUT,
-                        text=True,
-                        bufsize=1,  # Line-buffered
+                        **self._subprocess_kwargs()
                     )
                     self.binary_path = self.secondary_binary_path  # Update to secondary path
                 except Exception as e:
@@ -66,6 +58,25 @@ class UCIEngine:
             else:
                 raise RuntimeError(f"Failed to start UCI engine process: {e}")
             
+    def _subprocess_kwargs(self):
+        """Return the keyword arguments for subprocess.Popen."""
+        if sys.platform.startswith("win"):
+            return {
+                "creationflags": subprocess.CREATE_NO_WINDOW,
+                "stdin": subprocess.PIPE,
+                "stdout": subprocess.PIPE,
+                "stderr": subprocess.STDOUT,
+                "text": True,
+                "bufsize": 1,  # Line-buffered
+            }
+        else:
+            return {
+                "stdin": subprocess.PIPE,
+                "stdout": subprocess.PIPE,
+                "stderr": subprocess.STDOUT,
+                "text": True,
+                "bufsize": 1,  # Line-buffered
+            }
 
     def _send_command(self, command):
         """Send a command to the UCI engine."""
