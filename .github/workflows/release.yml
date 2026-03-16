@@ -45,10 +45,10 @@ jobs:
       - name: Build executable (Windows)
         if: runner.os == 'Windows'
         run: |
-          pyinstaller --noconfirm --clean --onefile --windowed --name SimpleChess --add-data "src/gui/assets;gui/assets" --add-binary "src/ai/stockfish/windows/avx2/stockfish-windows-x86-64-avx2.exe;ai/stockfish/windows/avx2" --add-binary "src/ai/stockfish/windows/non-avx2/stockfish-windows-x86-64.exe;ai/stockfish/windows/non-avx2" --add-data "src/ai/stockfish/shared;ai/stockfish/shared" src/main.py
+          pyinstaller --noconfirm --clean SimpleChess.spec
       
       - name: Restore signing certificate (Windows)
-        if: runner.os == 'Windows'
+        if: runner.os == 'Windows' && secrets.WIN_CERT_PFX_BASE64 != '' && secrets.WIN_CERT_PASSWORD != ''
         shell: pwsh
         env:
           WIN_CERT_PFX_BASE64: ${{ secrets.WIN_CERT_PFX_BASE64 }}
@@ -57,7 +57,7 @@ jobs:
           [IO.File]::WriteAllBytes("$env:RUNNER_TEMP\codesign.pfx", [Convert]::FromBase64String($env:WIN_CERT_PFX_BASE64))
 
       - name: Sign and verify executable (Windows)
-        if: runner.os == 'Windows'
+        if: runner.os == 'Windows' && secrets.WIN_CERT_PFX_BASE64 != '' && secrets.WIN_CERT_PASSWORD != ''
         shell: pwsh
         env:
           WIN_CERT_PASSWORD: ${{ secrets.WIN_CERT_PASSWORD }}
@@ -69,18 +69,53 @@ jobs:
             Sort-Object FullName -Descending |
             Select-Object -First 1
           if (-not $signtool) { throw "signtool.exe not found on runner" }
-          try {
-            & $signtool.FullName sign `
-              /fd SHA256 `
-              /td SHA256 `
-              /tr http://timestamp.digicert.com `
-              /f "$env:RUNNER_TEMP\codesign.pfx" `
-              /p "$env:WIN_CERT_PASSWORD" `
-              "dist\SimpleChess.exe"
-          }
-          finally {
-            Remove-Item "$env:RUNNER_TEMP\codesign.pfx" -ErrorAction SilentlyContinue
-          }
+          & $signtool.FullName sign `
+            /fd SHA256 `
+            /td SHA256 `
+            /tr http://timestamp.digicert.com `
+            /f "$env:RUNNER_TEMP\codesign.pfx" `
+            /p "$env:WIN_CERT_PASSWORD" `
+            "dist\SimpleChess.exe"
+
+      - name: Install Inno Setup (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          choco install innosetup --no-progress -y
+
+      - name: Build installer (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}" -replace '^v', ''
+          if ([string]::IsNullOrWhiteSpace($version)) { $version = "0.0.0" }
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "/DMyAppVersion=$version" "installer\SimpleChess.iss"
+
+      - name: Sign installer (Windows)
+        if: runner.os == 'Windows' && secrets.WIN_CERT_PFX_BASE64 != '' && secrets.WIN_CERT_PASSWORD != ''
+        shell: pwsh
+        env:
+          WIN_CERT_PASSWORD: ${{ secrets.WIN_CERT_PASSWORD }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:WIN_CERT_PASSWORD)) { throw "Missing secret WIN_CERT_PASSWORD" }
+          $signtool = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Recurse -Filter signtool.exe |
+            Where-Object { $_.FullName -match "\\x64\\signtool\.exe$" } |
+            Sort-Object FullName -Descending |
+            Select-Object -First 1
+          if (-not $signtool) { throw "signtool.exe not found on runner" }
+          & $signtool.FullName sign `
+            /fd SHA256 `
+            /td SHA256 `
+            /tr http://timestamp.digicert.com `
+            /f "$env:RUNNER_TEMP\codesign.pfx" `
+            /p "$env:WIN_CERT_PASSWORD" `
+            "dist\SimpleChess-windows-x64-installer.exe"
+
+      - name: Cleanup signing certificate (Windows)
+        if: runner.os == 'Windows' && secrets.WIN_CERT_PFX_BASE64 != '' && secrets.WIN_CERT_PASSWORD != ''
+        shell: pwsh
+        run: |
+          Remove-Item "$env:RUNNER_TEMP\codesign.pfx" -ErrorAction SilentlyContinue
 
       - name: Ensure Stockfish executable bits (macOS)
         if: runner.os == 'macOS'
@@ -91,7 +126,7 @@ jobs:
       - name: Build executable (macOS)
         if: runner.os == 'macOS'
         run: |
-          pyinstaller --noconfirm --clean --onefile --windowed --name SimpleChess --add-data "src/gui/assets:gui/assets" --add-binary "src/ai/stockfish/macos/avx2/stockfish-macos-x86-64-avx2:ai/stockfish/macos/avx2" --add-binary "src/ai/stockfish/macos/non-avx2/stockfish-macos-x86-64:ai/stockfish/macos/non-avx2" --add-data "src/ai/stockfish/shared:ai/stockfish/shared" src/main.py
+          pyinstaller --noconfirm --clean SimpleChess.spec
 
       - name: Ensure Stockfish executable bits (Linux)
         if: runner.os == 'Linux'
@@ -102,19 +137,21 @@ jobs:
       - name: Build executable (Linux)
         if: runner.os == 'Linux'
         run: |
-          pyinstaller --noconfirm --clean --onefile --windowed --name SimpleChess --add-data "src/gui/assets:gui/assets" --add-binary "src/ai/stockfish/ubuntu/avx2/stockfish-ubuntu-x86-64-avx2:ai/stockfish/ubuntu/avx2" --add-binary "src/ai/stockfish/ubuntu/non-avx2/stockfish-ubuntu-x86-64:ai/stockfish/ubuntu/non-avx2" --add-data "src/ai/stockfish/shared:ai/stockfish/shared" src/main.py
+          pyinstaller --noconfirm --clean SimpleChess.spec
 
       - name: Package artifact (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          Compress-Archive -Path dist/SimpleChess.exe -DestinationPath dist/SimpleChess-windows-x64.zip -Force
+          if (-not (Test-Path "dist\SimpleChess-windows-x64-installer.exe")) {
+            throw "Windows installer was not produced"
+          }
 
       - name: Set package file (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          "PACKAGE_FILE=dist/SimpleChess-windows-x64.zip" >> $env:GITHUB_ENV
+          "PACKAGE_FILE=dist/SimpleChess-windows-x64-installer.exe" >> $env:GITHUB_ENV
 
       - name: Package artifact (macOS)
         if: runner.os == 'macOS'

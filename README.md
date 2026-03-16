@@ -162,9 +162,29 @@ This is a learning project. Feel free to experiment and expand the codebase.
 This repo includes an automated workflow at [.github/workflows/release.yml](.github/workflows/release.yml) that:
 - builds on Windows, macOS, and Linux,
 - runs tests,
-- packages binaries,
+- packages release artifacts,
 - uploads artifacts to the run,
 - and publishes files to a GitHub Release when you push a version tag.
+
+Current release artifact types:
+- Windows: `SimpleChess-windows-x64-installer.exe` (Inno Setup installer)
+- macOS: `SimpleChess-macos-x64.tar.gz`
+- Linux: `SimpleChess-linux-x64.tar.gz`
+
+### PyInstaller dependency behavior
+
+- Python dependencies from `requirements.txt` are installed on the build machine before packaging.
+- The generated executable already contains those Python dependencies.
+- The executable does not run `pip install` when a user opens it.
+
+### Local executable build
+
+```bash
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+pip install pyinstaller
+pyinstaller --noconfirm --clean SimpleChess.spec
+```
 
 ### Create a release
 
@@ -181,6 +201,7 @@ git push origin v1.0.0
 ### Notes
 
 - The workflow also supports manual start via **Actions → Build and Release → Run workflow**.
+- Windows signing is optional: set `WIN_CERT_PFX_BASE64` and `WIN_CERT_PASSWORD` secrets to sign both the app and installer.
 - macOS binaries may need signing/notarization for smooth distribution outside your machine.
 - Windows binaries may show SmartScreen warnings until reputation/signing is established.
 
