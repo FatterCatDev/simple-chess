@@ -191,6 +191,16 @@ git push origin v1.0.0
 - Castling rights and en passant rights are intentionally not included in repetition matching.
 - SAN format is SAN-lite and includes custom draw/en passant suffix handling used internally by this project.
 
+## Third-Party Component: Stockfish
+
+- This project includes Stockfish binaries for AI opponent mode.
+- Stockfish is licensed under GPL-3.0.
+- Included engine files are located under:
+   - `src/ai/stockfish/windows/avx2/`
+   - `src/ai/stockfish/windows/non-avx2/`
+- Included license/source bundle is located under:
+   - `src/ai/stockfish/windows/shared/`
+
 ## Known Issues
 
 - See `design_docs/KNOWN_BUGS.md` for tracked issues and status.

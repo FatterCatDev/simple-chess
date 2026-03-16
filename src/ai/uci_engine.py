@@ -48,6 +48,7 @@ class UCIEngine:
                         text=True,
                         bufsize=1,  # Line-buffered
                     )
+                    self.binary_path = self.secondary_binary_path  # Update to secondary path
                 except Exception as e:
                     raise RuntimeError(f"Failed to start UCI engine process with both primary and secondary binaries: {e}")
             else:
