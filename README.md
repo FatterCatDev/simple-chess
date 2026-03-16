@@ -174,14 +174,23 @@ Current release artifact types:
 ### Running release artifacts
 
 - macOS: open `SimpleChess-macos-x64.dmg`, then copy/open `SimpleChess.app`.
-- Linux: mark `SimpleChess-linux-x64.AppImage` executable before first run:
+- macOS release ships as a `.dmg` image containing `SimpleChess.app`.
+- Linux: downloaded AppImage files are not executable by default. You must mark it executable before it will run (otherwise Ubuntu will try to mount it as a disk image).
+
+#### Linux — CLI
 
 ```bash
 chmod +x SimpleChess-linux-x64.AppImage
 ./SimpleChess-linux-x64.AppImage
 ```
 
-- macOS release now ships as a `.dmg` image containing `SimpleChess.app`.
+#### Linux — GUI (Files / Nautilus)
+
+1. Right-click `SimpleChess-linux-x64.AppImage`
+2. Select **Properties**
+3. Open the **Permissions** tab
+4. Check **Allow executing file as program**
+5. Close Properties, then double-click the file to launch it
 
 ### PyInstaller dependency behavior
 
