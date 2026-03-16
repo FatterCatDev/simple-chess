@@ -199,7 +199,7 @@ git push origin v1.0.0
    - `src/ai/stockfish/windows/avx2/`
    - `src/ai/stockfish/windows/non-avx2/`
 - Included license/source bundle is located under:
-   - `src/ai/stockfish/windows/shared/`
+   - `src/ai/stockfish/shared/`
 
 ## Known Issues
 

@@ -45,7 +45,7 @@ jobs:
       - name: Build executable (Windows)
         if: runner.os == 'Windows'
         run: |
-          pyinstaller --noconfirm --clean --onefile --windowed --name SimpleChess --add-data "src/gui/assets;gui/assets" --add-binary "src/ai/stockfish/windows/avx2/stockfish-windows-x86-64-avx2.exe;ai/stockfish/windows/avx2" --add-binary "src/ai/stockfish/windows/non-avx2/stockfish-windows-x86-64.exe;ai/stockfish/windows/non-avx2" --add-data "src/ai/stockfish/windows/shared;ai/stockfish/windows/shared" src/main.py
+          pyinstaller --noconfirm --clean --onefile --windowed --name SimpleChess --add-data "src/gui/assets;gui/assets" --add-binary "src/ai/stockfish/windows/avx2/stockfish-windows-x86-64-avx2.exe;ai/stockfish/windows/avx2" --add-binary "src/ai/stockfish/windows/non-avx2/stockfish-windows-x86-64.exe;ai/stockfish/windows/non-avx2" --add-data "src/ai/stockfish/shared;ai/stockfish/shared" src/main.py
       
       - name: Restore signing certificate (Windows)
         if: runner.os == 'Windows'
