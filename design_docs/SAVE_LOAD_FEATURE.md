@@ -42,14 +42,29 @@ Preferred persisted shape (JSON):
 
 ```json
 {
-  "format": "san-lite-list",
-  "version": 1,
+  "format": "san-lite-list-with-ai",
+  "version": 2,
   "moves": ["e4", "e5", "Nf3", "Nc6", "Bb5"]
+}
+```
+
+Current implementation also persists AI context fields when present:
+
+```json
+{
+  "game_mode": "pvai",
+  "player_color": "W",
+  "ai_white": null,
+  "ai_black": {
+    "engine": "Stockfish",
+    "difficulty": 1
+  }
 }
 ```
 
 Minimum accepted payload for load:
 - A list of SAN-lite strings in order.
+- In JSON wrapper mode, `moves` is required and AI context fields are optional.
 
 Notes:
 - `moves` must be non-empty for successful load in current engine behavior.
@@ -72,6 +87,7 @@ Load:
 - Trigger: Load/Open button/menu action.
 - Result: Parse file, validate shape, pass notation to controller load flow.
 - Success feedback: board refreshes to loaded final position, replay info updates, and a brief in-board fading success message is shown.
+- On success, AI context (`game_mode`, player color, engine metadata) is restored when available.
 - Failure feedback: show reason and keep current game unchanged.
 
 ## 7. Resume and Replay Rules

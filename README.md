@@ -13,7 +13,7 @@ A learning project for building a chess game in Python.
    - Player vs Player
    - Player vs AI
    - AI vs AI
-   - AI engine selection (Random AI, Simple Heuristic Easy/Hard)
+   - AI engine selection (Random AI, Simple Heuristic Easy/Hard, Stockfish UCI)
    - Player color selection for PvAI (White/Black)
 - Board orientation flips when PvAI player color is Black.
 - Previous-move highlighting is implemented (`from` and `to` squares).
@@ -198,6 +198,10 @@ git push origin v1.0.0
 - Included engine files are located under:
    - `src/ai/stockfish/windows/avx2/`
    - `src/ai/stockfish/windows/non-avx2/`
+   - `src/ai/stockfish/macos/avx2/`
+   - `src/ai/stockfish/macos/non-avx2/`
+   - `src/ai/stockfish/ubuntu/avx2/`
+   - `src/ai/stockfish/ubuntu/non-avx2/`
 - Included license/source bundle is located under:
    - `src/ai/stockfish/shared/`
 

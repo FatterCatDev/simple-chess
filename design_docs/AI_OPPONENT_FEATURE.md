@@ -2,7 +2,7 @@
 
 ## 1. Overview
 
-This feature adds AI-powered opponents to Simple Chess. The current implementation supports built-in engines and game modes through a startup/new-game setup dialog, with future expansion planned for UCI engines.
+This feature adds AI-powered opponents to Simple Chess. The current implementation supports built-in engines and Stockfish through a UCI wrapper, with setup available at startup/new-game.
 
 ---
 
@@ -18,7 +18,7 @@ This feature adds AI-powered opponents to Simple Chess. The current implementati
 - [x] AI makes legal moves respecting all chess rules
 - [x] Game ends correctly after AI move (e.g., if AI move leads to checkmate)
 - [x] Replay controls work with games played against AI
-- [ ] Save/load preserves the AI selection and difficulty for context
+- [x] Save/load preserves the AI selection and difficulty for context
 - [x] UI flow to select game mode, AI engine, and player color before play
 
 ### 2.2 Out of Scope (Future)
@@ -49,7 +49,7 @@ Engines are organized into three categories:
 | **Komodo** | ~3300 ELO | ~7 MB | 3 | Commercial engine; free download |
 | **Arasan** | ~2900 ELO | ~5 MB | 3 | Open source; lightweight |
 
-**Current Scope:** Built-in engines (Random, Simple Heuristic)
+**Current Scope:** Built-in engines (Random, Simple Heuristic) + Stockfish via UCI
 
 **Phase 3 Scope:** Add multi-engine support via generic UCI wrapper; player can choose Stockfish, Leela, or other UCI engines
 
@@ -117,7 +117,7 @@ class AIEngine:
         raise NotImplementedError("This method should be overridden by subclasses.")
 ```
 
-**Note:** The current implementation uses `get_move(game)` returning a `(from_sq, to_sq)` tuple rather than SAN notation. When Stockfish/UCI engines are integrated (Phase 1+), the interface may be extended to support difficulty and SAN output as originally planned.
+**Note:** The current implementation uses `get_move(game)` returning either `(from_sq, to_sq)` or `(from_sq, to_sq, promotion_choice)` for promotion-aware paths.
 
 ### 5.2 Engine Implementations
 
@@ -132,14 +132,14 @@ class UCIEngine(AIEngine):
     def __init__(self, name: str, binary_path: str):
         self.name = name
         self.binary_path = binary_path
-        # Engine process spawned on first get_best_move() call
+        # Engine process spawned on first get_move() call
     
-    def get_best_move(self, game_state: Game, difficulty: int) -> str:
-        """Send position to UCI engine; return best move at given depth."""
+    def get_move(self, game: Game) -> tuple | None:
+        """Send position to UCI engine; return a legal move tuple."""
         # Translate difficulty (1-20) to UCI depth
         depth = max(1, min(20, difficulty))
         # Spawn engine subprocess, send UCI commands, collect bestmove
-        return best_move_san
+        return (from_sq, to_sq)
 ```
 
 **Difficulty Mapping:**
@@ -215,11 +215,10 @@ class GameController:
         current_ai = self.ai_white if self.game.current_turn == "W" else self.ai_black
         return current_ai is not None
     
-    def get_ai_move(self) -> str:
+    def get_ai_move(self) -> tuple | None:
         """Get the next move from the AI."""
         current_ai = self.ai_white if self.game.current_turn == "W" else self.ai_black
-        difficulty = self.ai_difficulty_white if self.game.current_turn == "W" else self.ai_difficulty_black
-        return current_ai.get_best_move(self.game, difficulty)
+        return current_ai.get_move(self.game)
     
     def make_ai_move(self) -> bool:
         """Execute the AI's chosen move."""
@@ -492,7 +491,7 @@ Implementation rule for Phase 1A:
 - [x] Design and implement `AIEngine` base interface (`src/ai/ai.py`)
 - [x] Implement `RandomAI` engine (built-in) (`src/ai/ai.py`)
 - [x] Implement `SimpleHeuristicAI` engine (built-in; hand-crafted evaluation) (`src/ai/simple_heuristic_ai.py`)
-- [ ] Implement `UCIEngine` wrapper (generic UCI binary support for Stockfish, Leela, etc.)
+- [x] Implement `UCIEngine` wrapper (generic UCI binary support for Stockfish, Leela, etc.)
 
 #### Controller
 - [x] Extend `GameController` with `ai_white` / `ai_black` fields
@@ -502,15 +501,15 @@ Implementation rule for Phase 1A:
 #### Testing
 - [x] Add unit tests for `RandomAI` (`TestGameControllerAIMode` in `src/tests/test_controller.py`)
 - [x] Add unit tests for `SimpleHeuristicAI` (`src/tests/test_ai_engines.py`)
-- [ ] Add unit tests for `UCIEngine` with Stockfish binary
+- [x] Add unit tests for `UCIEngine` move parsing/response behavior
 - [ ] Add integration tests: `GameController` with Random vs Random
-- [ ] Add integration tests: `GameController` with built-in vs Stockfish
+- [x] Add `GameController` handling for 2-tuple and 3-tuple AI moves (promotion-aware)
 - [ ] Test that all AI moves are legal in all positions
 
 #### Configuration
-- [ ] Document Stockfish binary installation (Windows/macOS/Linux paths)
-- [ ] Create `config.py` with engine binary paths (or use environment variables)
-- [ ] Add graceful fallback if Stockfish binary unavailable (warn user; offer Random/Heuristic only)
+- [x] Document bundled Stockfish binary layout (Windows/macOS/Linux paths)
+- [x] Resolve Stockfish binary paths via `src/gui/ai_mode.py` with platform-aware candidates and fallback
+- [x] Add graceful fallback if Stockfish binary unavailable (fallback to RandomAI)
 
 ### Phase 2: UI
 **Goal:** Setup dialog; auto-play loop; end-to-end playable
@@ -520,7 +519,7 @@ Implementation rule for Phase 1A:
 - [x] Create Setup Dialog (`show_mode_dialog()`): Tkinter Toplevel with radio buttons (PvP, PvAI, AIvAI) and Start/Cancel buttons
 - [x] Wire "New Game" and app startup to show Setup Dialog
 - [x] Wire Start → initialize `GameController` via centralized mode builder
-- [x] Add engine selection dropdown to Setup Dialog (Random + Simple Heuristic variants)
+- [x] Add engine selection dropdown to Setup Dialog (Random + Simple Heuristic + Stockfish)
 - [ ] Add difficulty slider to Setup Dialog (1–20; maps to UCI depth)
 - [x] Add auto-play loop for AI vs AI mode
 - [ ] Update status label to show "AI thinking..." during move computation
@@ -534,7 +533,8 @@ Implementation rule for Phase 1A:
 - Implemented now: mode dialog + engine selection + player color selection + flipped board for Black player in PvAI.
 - Implemented now: first AI move triggers automatically when AI controls White at game start.
 - Implemented now: dedicated AI-vs-AI continuous autoplay loop with non-overlapping scheduling guard.
-- Not implemented yet: UCI/Stockfish integration, LLM opponent mode.
+- Implemented now: Stockfish UCI integration with platform-aware path resolution, primary/secondary binary fallback, and runtime error handling.
+- Not implemented yet: LLM opponent mode.
 
 ### Phase 3: Multi-Engine Expansion
 **Goal:** Add Leela and other UCI engines; player can choose at setup
@@ -558,7 +558,7 @@ Implementation rule for Phase 1A:
 - [ ] Add UI status indicators: connected/disconnected, provider, fallback events
 
 ### Phase 5: Enhancements (Post-MVP)
-- [ ] Save/load AI selection to JSON (versioned format)
+- [ ] Extend AI context schema beyond current v2 save/load format (optional metadata)
 - [ ] Main menu with "Continue Game" option
 - [ ] AI vs AI auto-play speed control (slider: instant, 1 sec/move, 2 sec/move)
 - [ ] ELO display or performance metrics (optional)
@@ -566,7 +566,7 @@ Implementation rule for Phase 1A:
 
 ---
 
-## 8. Test Plan
+## 9. Test Plan
 
 ### 8.1 Unit Tests: AI Engines
 
@@ -603,7 +603,7 @@ Implementation rule for Phase 1A:
 
 ---
 
-## 9. Files to Create/Modify
+## 10. Files to Create/Modify
 
 | File | Change | Phase | Status |
 |---|---|---|---|
@@ -611,11 +611,11 @@ Implementation rule for Phase 1A:
 | `src/ai/simple_heuristic_ai.py` | New: `SimpleHeuristicAI` implementation | 1 | Done |
 | `src/ai/sim_state.py` | New: immutable AI simulation state models | 1A | Done |
 | `src/ai/sim_adapter.py` | New: state adapters, legal moves, and state move application | 1A | Done |
-| `src/ai/uci_engine.py` | New: Generic `UCIEngine` wrapper for Stockfish, Leela, etc. | 1 | Pending |
+| `src/ai/uci_engine.py` | New: Generic `UCIEngine` wrapper for Stockfish, Leela, etc. | 1 | Done |
 | `src/ai/config.py` | New: Engine paths and configuration | 1 | Pending |
 | `src/ai/__init__.py` | Export engine classes | 1 | Pending |
 | `src/gui/controller.py` | Update `GameController.__init__()` and add `should_ai_move()`, `make_ai_move()` | 1 | Done |
-| `src/gui/app.py` | Setup dialog + AI autoplay loop + non-overlapping guard + debug throughput toggle | 2 | Partial |
+| `src/gui/app.py` | Setup dialog + AI autoplay loop + non-overlapping guard + debug throughput toggle + AI shutdown lifecycle hooks | 2 | Partial |
 | `src/tests/test_ai_engines.py` | New: Unit tests for RandomAI, SimpleHeuristic, UCIEngine | 1 |
 | `src/tests/test_controller_ai.py` | New: Integration tests for GameController + AI | 1 |
 | `requirements.txt` | Add chess library and/or python-chess (Phase 1+) | 1 |
@@ -629,7 +629,7 @@ Implementation rule for Phase 1A:
 
 ---
 
-## 10. Acceptance Criteria
+## 11. Acceptance Criteria
 
 - [ ] Player can start a Player vs AI game
 - [ ] Player can start an AI vs AI game
@@ -648,7 +648,7 @@ Implementation rule for Phase 1A:
 
 ---
 
-## 11. Questions & Decisions
+## 12. Questions & Decisions
 
 1. **Should AI move be instant or have artificial delay?**
    - *Proposed:* Instant for now; add optional delay slider in Phase 4

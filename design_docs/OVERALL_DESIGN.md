@@ -12,6 +12,7 @@ This is a personal Python learning project focused on implementing a complete ch
 - JSON save/load wrapper around SAN-lite move history
 - Replay navigation (start/previous/next/end)
 - Tkinter desktop UI with mode selection and AI support
+- UCI/Stockfish AI integration with cross-platform binary resolution and fallback handling
 
 ---
 
@@ -49,6 +50,7 @@ This is a personal Python learning project focused on implementing a complete ch
 - `AIEngine` interface
 - Built-in `RandomAI`
 - Built-in `SimpleHeuristicAI` (easy/hard levels in GUI)
+- `UCIEngine` integration for Stockfish (tuple move output supports promotion)
 - Game setup dialog supports:
     - Player vs Player
     - Player vs AI
@@ -66,7 +68,8 @@ This is a personal Python learning project focused on implementing a complete ch
 - **Controller**: `src/gui/controller.py` (UI-facing game API, replay state, save/load)
 - **Game Logic**: `src/game/game.py`, `src/game/standard_chess_rules.py`
 - **Board/Pieces**: `src/game/board.py`, `src/game/piece.py`
-- **AI**: `src/ai/ai.py`, `src/ai/simple_heuristic_ai.py`
+- **AI**: `src/ai/ai.py`, `src/ai/simple_heuristic_ai.py`, `src/ai/uci_engine.py`
+- **AI Mode Wiring**: `src/gui/ai_mode.py` (engine factories, stockfish path resolution, AI context reconstruction)
 
 ### 3.2 Runtime Flow
 User action → `GameController` → `Game`/rules validation → state update → optional AI move (`should_ai_move`/`make_ai_move`) → GUI refresh.
@@ -87,7 +90,8 @@ User action → `GameController` → `Game`/rules validation → state update �
 
 - Rules/Help dialog is not implemented in the GUI.
 - Replay does not show a dedicated move-number label separate from the status text.
-- Stockfish/UCI integration is not implemented yet.
+- Multi-engine UCI expansion beyond Stockfish (e.g., Leela/Komodo) is not implemented yet.
+- LLM opponent mode is not implemented yet.
 
 See `design_docs/KNOWN_BUGS.md` for tracked bug-level details.
 
