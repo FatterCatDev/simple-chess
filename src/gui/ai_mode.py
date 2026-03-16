@@ -1,13 +1,45 @@
 from ai.ai import RandomAI
 from ai.simple_heuristic_ai import SimpleHeuristicAI
 from gui.controller import GameController
+from ai.uci_engine import UCIEngine
+from pathlib import Path
+import os
+import sys
 
 ENGINE_OPTIONS = [
     ("Random AI", lambda: RandomAI()),
     ("Simple Heuristic AI (Easy)", lambda: SimpleHeuristicAI(difficulty=1)),
     ("Simple Heuristic AI (Hard)", lambda: SimpleHeuristicAI(difficulty=2)),
+    ("Stockfish (UCI)", lambda: stockfish_factory(difficulty=1)) # Placeholder path; replace with actual path to Stockfish binary
 ]
 
+def find_app_base_path():
+    """Determine the base path of the application, whether running as a script or a frozen executable."""
+    if getattr(sys, 'frozen', False):
+        # If the application is frozen (e.g., by PyInstaller), use the directory of the executable
+        return Path(sys.executable).parent
+    else:
+        # If running as a script, use the directory of this file
+        return Path(__file__).parent.parent  # Adjust as needed based on your project structure
+
+def resolve_stockfish_binary_path():
+    base = find_app_base_path()
+    candidates = [
+        base / "ai/stockfish/windows/avx2/stockfish-windows-x86-64-avx2.exe",
+        base / "ai/stockfish/windows/non-avx2/stockfish-windows-x86-64.exe",
+        base / "src/ai/stockfish/windows/avx2/stockfish-windows-x86-64-avx2.exe",
+        base / "src/ai/stockfish/windows/non-avx2/stockfish-windows-x86-64.exe",
+    ]
+    for path in candidates:
+        if path.exists():
+            return path
+    return None
+
+def stockfish_factory(difficulty=1):
+    binary_path = resolve_stockfish_binary_path()
+    if binary_path is None:
+        return RandomAI()  # Fallback to RandomAI if Stockfish binary is not found
+    return UCIEngine(engine_name="Stockfish", binary_path=str(binary_path), difficulty=difficulty)
 
 def ai_meta_from_engine(ai_engine):
     if ai_engine is None:
@@ -72,5 +104,7 @@ def build_ai_from_meta(ai_meta):
             difficulty = 1
         difficulty = 1 if difficulty <= 1 else 2
         return SimpleHeuristicAI(difficulty=difficulty or 1)
+    if engine == "Stockfish":
+        return stockfish_factory(difficulty=difficulty or 1)
 
     return RandomAI()
