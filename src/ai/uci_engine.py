@@ -1,5 +1,7 @@
 import subprocess
 import time
+from pathlib import Path
+import sys
 
 class UCIEngine:
     def __init__(self, engine_name, binary_path, difficulty=1, move_time_ms=None, secondary_binary_path=None):
@@ -27,6 +29,11 @@ class UCIEngine:
             raise ValueError("Binary path for UCI engine is not set.")
         try:
             if self.binary_path is not None:
+                if not sys.platform.startswith("win"):
+                    try:
+                        Path(self.binary_path).chmod(Path(self.binary_path).stat().st_mode | 0o111)
+                    except Exception as e:
+                        print(f"Warning: Failed to set executable permissions for {self.binary_path}: {e}")
                 self.process = subprocess.Popen(
                     [self.binary_path],
                     stdin=subprocess.PIPE,
@@ -40,6 +47,11 @@ class UCIEngine:
         except Exception as e:
             if self.secondary_binary_path:
                 try:
+                    if not sys.platform.startswith("win"):
+                        try:
+                            Path(self.secondary_binary_path).chmod(Path(self.secondary_binary_path).stat().st_mode | 0o111)
+                        except Exception as e:
+                            print(f"Warning: Failed to set executable permissions for {self.secondary_binary_path}: {e}")
                     self.process = subprocess.Popen(
                         [self.secondary_binary_path],
                         stdin=subprocess.PIPE,
