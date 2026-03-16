@@ -4,7 +4,8 @@ import os
 import sys
 from PyInstaller.utils.hooks import collect_submodules
 
-project_root = os.path.abspath(os.path.dirname(__file__))
+# __file__ is not guaranteed when PyInstaller evaluates a spec in CI.
+project_root = os.path.abspath(globals().get("SPECPATH", os.getcwd()))
 src_dir = os.path.join(project_root, "src")
 
 datas = [
