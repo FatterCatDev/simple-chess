@@ -9,6 +9,10 @@ on:
 permissions:
   contents: write
 
+env:
+  APPIMAGETOOL_VERSION: '1.9.1'
+  APPIMAGETOOL_SHA256_X86_64: 'ed4ce84f0d9caff66f50bcca6ff6f35aae54ce8135408b3fa33abfc3cb384eb0'
+
 jobs:
   build:
     name: Build (${{ matrix.os }})
@@ -161,7 +165,8 @@ jobs:
           exec "$HERE/usr/bin/SimpleChess" "$@"
           EOF
           chmod +x AppDir/AppRun
-          wget -q -O appimagetool-x86_64.AppImage "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage"
+          wget -q -O appimagetool-x86_64.AppImage "https://github.com/AppImage/appimagetool/releases/download/${APPIMAGETOOL_VERSION}/appimagetool-x86_64.AppImage"
+          echo "${APPIMAGETOOL_SHA256_X86_64}  appimagetool-x86_64.AppImage" | sha256sum -c -
           chmod +x appimagetool-x86_64.AppImage
           APPIMAGE_EXTRACT_AND_RUN=1 ./appimagetool-x86_64.AppImage AppDir dist/SimpleChess-linux-x64.AppImage
 
@@ -186,12 +191,19 @@ jobs:
             echo "macOS app bundle was not produced"
             exit 1
           fi
-          tar -czf dist/SimpleChess-macos-x64.app.tar.gz -C dist SimpleChess.app
+          rm -rf dist/dmg-root
+          mkdir -p dist/dmg-root
+          cp -R dist/SimpleChess.app dist/dmg-root/
+          hdiutil create -volname "Simple Chess" -srcfolder dist/dmg-root -ov -format UDZO dist/SimpleChess-macos-x64.dmg
+          if [ ! -f dist/SimpleChess-macos-x64.dmg ]; then
+            echo "macOS DMG was not produced"
+            exit 1
+          fi
 
       - name: Set package file (macOS)
         if: runner.os == 'macOS'
         run: |
-          echo "PACKAGE_FILE=dist/SimpleChess-macos-x64.app.tar.gz" >> "$GITHUB_ENV"
+          echo "PACKAGE_FILE=dist/SimpleChess-macos-x64.dmg" >> "$GITHUB_ENV"
 
       - name: Package artifact (Linux)
         if: runner.os == 'Linux'
@@ -212,9 +224,25 @@ jobs:
           name: simplechess-${{ runner.os }}
           path: ${{ env.PACKAGE_FILE }}
 
+  publish:
+    name: Publish Release
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all packaged artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: simplechess-*
+          merge-multiple: true
+          path: release-artifacts
+
+      - name: Verify downloaded files
+        run: |
+          ls -la release-artifacts
+
       - name: Publish to GitHub Release
-        if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: ${{ env.PACKAGE_FILE }}
+          files: release-artifacts/*
           generate_release_notes: true

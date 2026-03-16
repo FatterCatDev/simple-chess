@@ -168,8 +168,20 @@ This repo includes an automated workflow at [.github/workflows/release.yml](.git
 
 Current release artifact types:
 - Windows: `SimpleChess-windows-x64-installer.exe` (Inno Setup installer)
-- macOS: `SimpleChess-macos-x64.app.tar.gz` (contains `SimpleChess.app`)
+- macOS: `SimpleChess-macos-x64.dmg`
 - Linux: `SimpleChess-linux-x64.AppImage`
+
+### Running release artifacts
+
+- macOS: open `SimpleChess-macos-x64.dmg`, then copy/open `SimpleChess.app`.
+- Linux: mark `SimpleChess-linux-x64.AppImage` executable before first run:
+
+```bash
+chmod +x SimpleChess-linux-x64.AppImage
+./SimpleChess-linux-x64.AppImage
+```
+
+- macOS release now ships as a `.dmg` image containing `SimpleChess.app`.
 
 ### PyInstaller dependency behavior
 
