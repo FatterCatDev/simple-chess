@@ -2,10 +2,11 @@ import subprocess
 import time
 
 class UCIEngine:
-    def __init__(self, engine_name, binary_path, difficulty=1, move_time_ms=None):
+    def __init__(self, engine_name, binary_path, difficulty=1, move_time_ms=None, secondary_binary_path=None):
         self.engine_name = engine_name
-        self.name = f"{engine_name} | ELO: UCI | Difficulty: {difficulty}"
+        self.name = f"{engine_name} | UCI | Difficulty: {difficulty}"
         self.binary_path = binary_path
+        self.secondary_binary_path = secondary_binary_path
         self.difficulty = difficulty
         self.move_time_ms = move_time_ms
         self.process = None
@@ -22,19 +23,36 @@ class UCIEngine:
         """Start the UCI engine process."""
         if self.process and self.process.poll() is None:
             return  # Process already started
-        if not self.binary_path:
+        if not self.binary_path and not self.secondary_binary_path:
             raise ValueError("Binary path for UCI engine is not set.")
         try:
-            self.process = subprocess.Popen(
-                [self.binary_path],
-                stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=True,
-                bufsize=1,  # Line-buffered
-            )
+            if self.binary_path is not None:
+                self.process = subprocess.Popen(
+                    [self.binary_path],
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    bufsize=1,  # Line-buffered
+                )
+            else:
+                raise ValueError("Primary binary path is not set for UCI engine.")
         except Exception as e:
-            raise RuntimeError(f"Failed to start UCI engine process: {e}")
+            if self.secondary_binary_path:
+                try:
+                    self.process = subprocess.Popen(
+                        [self.secondary_binary_path],
+                        stdin=subprocess.PIPE,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.STDOUT,
+                        text=True,
+                        bufsize=1,  # Line-buffered
+                    )
+                except Exception as e:
+                    raise RuntimeError(f"Failed to start UCI engine process with both primary and secondary binaries: {e}")
+            else:
+                raise RuntimeError(f"Failed to start UCI engine process: {e}")
+            
 
     def _send_command(self, command):
         """Send a command to the UCI engine."""

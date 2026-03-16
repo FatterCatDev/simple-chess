@@ -17,7 +17,7 @@ def find_app_base_path():
     """Determine the base path of the application, whether running as a script or a frozen executable."""
     if getattr(sys, 'frozen', False):
         # If the application is frozen (e.g., by PyInstaller), use the directory of the executable
-        return Path(sys.executable).parent
+        return Path(getattr(sys, '_MEIPASS', Path(sys.executable).parent))
     else:
         # If running as a script, use the directory of this file
         return Path(__file__).parent.parent  # Adjust as needed based on your project structure
@@ -30,16 +30,26 @@ def resolve_stockfish_binary_path():
         base / "src/ai/stockfish/windows/avx2/stockfish-windows-x86-64-avx2.exe",
         base / "src/ai/stockfish/windows/non-avx2/stockfish-windows-x86-64.exe",
     ]
+    possible_paths = []
+    primary_path = []
+    secondary_path = []
     for path in candidates:
         if path.exists():
-            return path
-    return None
+            possible_paths.append(path)
+    for path in possible_paths:
+        if "avx2" in str(path):
+            primary_path.append(path)
+        else:
+            secondary_path.append(path)
+    if not primary_path and not secondary_path:
+        return None, None
+    return primary_path[0], secondary_path[0] if secondary_path else None
 
 def stockfish_factory(difficulty=1):
-    binary_path = resolve_stockfish_binary_path()
+    binary_path, secondary_path = resolve_stockfish_binary_path()
     if binary_path is None:
         return RandomAI()  # Fallback to RandomAI if Stockfish binary is not found
-    return UCIEngine(engine_name="Stockfish", binary_path=str(binary_path), difficulty=difficulty)
+    return UCIEngine(engine_name="Stockfish", binary_path=str(binary_path), difficulty=difficulty, secondary_binary_path=str(secondary_path) if secondary_path else None)
 
 def ai_meta_from_engine(ai_engine):
     if ai_engine is None:
