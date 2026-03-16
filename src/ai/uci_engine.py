@@ -87,7 +87,6 @@ class UCIEngine:
             raise RuntimeError("UCI engine process is not running or stdout is not available.")
         deadline = time.monotonic() + timeout if timeout else None
         while deadline is None or time.monotonic() <= deadline:
-            try:
                 line = self.process.stdout.readline().strip()
 
                 if not line:
@@ -100,8 +99,6 @@ class UCIEngine:
                     continue
 
                 return self._parse_bestmove(line)
-            except ValueError as e:
-                raise RuntimeError(f"Failed to parse UCI engine response: {e}")
         raise TimeoutError("Timeout while waiting for bestmove from UCI engine.")
 
     def _stop(self):
