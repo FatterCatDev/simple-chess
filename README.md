@@ -13,11 +13,15 @@ A learning project for building a chess game in Python.
    - Player vs Player
    - Player vs AI
    - AI vs AI
-   - AI engine selection (Random AI, Simple Heuristic Easy/Hard, Stockfish UCI)
+   - AI engine selection (Random AI, Simple Heuristic AI, Stockfish UCI)
+   - Engine-dependent difficulty sliders (dynamic ranges):
+      - Random AI: `1` (fixed)
+      - Simple Heuristic AI: `1-2`
+      - Stockfish UCI: `1-10`
    - Player color selection for PvAI (White/Black)
 - Board orientation flips when PvAI player color is Black.
 - Previous-move highlighting is implemented (`from` and `to` squares).
-- Current automated test status: `160 passed, 0 failed`.
+- Current automated test status: `165 passed, 0 failed`.
 
 ## Project Structure
 
@@ -107,7 +111,7 @@ python -m unittest discover -s src/tests -t src
 ```
 
 Current result in this workspace:
-- `160 passed, 0 failed`
+- `165 passed, 0 failed`
 
 ## Release Notes (2026-03-15)
 
@@ -136,7 +140,7 @@ Current result in this workspace:
    - developed opening positions,
    - en passant windows,
    - castling available / castling rights removed scenarios.
-- Current automated suite result: `160 passed, 0 failed`.
+- Current automated suite result: `165 passed, 0 failed`.
 
 ### Running AI Stress Repro Script (Manual)
 

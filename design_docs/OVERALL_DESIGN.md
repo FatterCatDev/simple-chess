@@ -1,6 +1,6 @@
 # Simple Chess — Overall Design (Current State)
 
-Last verified: 2026-03-16
+Last verified: 2026-03-17
 
 ## 1. Project Overview
 
@@ -14,6 +14,7 @@ This is a personal Python learning project focused on implementing a complete ch
 - JSON save/load wrapper around SAN-lite move history
 - Replay navigation (start/previous/next/end)
 - Tkinter desktop UI with mode selection and AI support
+- Engine-dependent AI difficulty sliders in setup dialog (PvAI and AIvAI)
 - UCI/Stockfish AI integration with cross-platform binary resolution and fallback handling
 
 ---
@@ -81,7 +82,7 @@ User action → `GameController` → `Game`/rules validation → state update �
 ## 4. Testing Status
 
 ### 4.1 Current Automated Result
-- `160 passed, 0 failed`
+- `165 passed, 0 failed`
 
 ### 4.2 Current Failing Tests
 - None currently.

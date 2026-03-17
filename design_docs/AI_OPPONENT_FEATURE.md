@@ -1,6 +1,6 @@
 # AI Opponent Feature — Design Document
 
-Last verified: 2026-03-16
+Last verified: 2026-03-17
 
 ## 1. Overview
 
@@ -13,7 +13,7 @@ This feature adds AI-powered opponents to Simple Chess. The current implementati
 ### 2.1 Core Requirements
 - [x] Player can select an AI opponent before starting a game
 - [x] Multiple built-in AI engines/models available (Random, Simple Heuristic)
-- [x] Basic difficulty options available for Simple Heuristic (Easy/Hard in UI)
+- [x] Engine-dependent difficulty sliders available in setup dialog (Random=1 fixed, Heuristic=1–2, Stockfish=1–10)
 - [ ] Optional LLM Opponent mode available
 - [ ] LLM Opponent uses the user's own account (OpenAI or GitHub) for model access
 - [x] Game modes: Player vs AI, AI vs AI
@@ -536,7 +536,7 @@ Implementation rule for Phase 1A:
 - [x] Wire "New Game" and app startup to show Setup Dialog
 - [x] Wire Start → initialize `GameController` via centralized mode builder
 - [x] Add engine selection dropdown to Setup Dialog (Random + Simple Heuristic + Stockfish)
-- [ ] Add engine-dependent difficulty slider to Setup Dialog
+- [x] Add engine-dependent difficulty slider to Setup Dialog
     - Random fixed at 1
     - Heuristic range 1–2
     - Stockfish range 1–10
@@ -550,9 +550,11 @@ Implementation rule for Phase 1A:
 ## 8. Current Reality Snapshot
 
 - Implemented now: mode dialog + engine selection + player color selection + flipped board for Black player in PvAI.
+- Implemented now: dynamic difficulty sliders in setup dialog for PvAI and AIvAI with engine-based range updates.
 - Implemented now: first AI move triggers automatically when AI controls White at game start.
 - Implemented now: dedicated AI-vs-AI continuous autoplay loop with non-overlapping scheduling guard.
 - Implemented now: Stockfish UCI integration with platform-aware path resolution, primary/secondary binary fallback, and runtime error handling.
+- Implemented now: Stockfish difficulty slider is mapped to UCI `Skill Level` (`1 -> 0`, `10 -> 20`) with clamped formula and runtime option application.
 - Not implemented yet: LLM opponent mode.
 
 ### Phase 3: Multi-Engine Expansion
@@ -655,7 +657,7 @@ Implementation rule for Phase 1A:
 - [ ] Player can start an AI vs AI game
 - [ ] AI engine picks a legal move in every position
 - [ ] Easy AI (difficulty 1) vs Easy AI completes a full game
-- [ ] Stockfish difficulty mapping is correct (`1 -> Skill Level 0`, `10 -> Skill Level 20`)
+- [x] Stockfish difficulty mapping is correct (`1 -> Skill Level 0`, `10 -> Skill Level 20`)
 - [ ] Stockfish fallback depth behavior is correct (`go depth 12` when no movetime)
 - [ ] User can sign in with OpenAI or GitHub to enable LLM Opponent
 - [ ] LLM Opponent is disabled when user is not authenticated
@@ -664,7 +666,7 @@ Implementation rule for Phase 1A:
 - [ ] Save game captures AI engine type and difficulty
 - [ ] Load game with AI restores the setup correctly
 - [ ] Status label shows "AI thinking..." during AI move computation
-- [ ] All tests pass: unit tests for engines + integration tests for controller
+- [x] All tests pass: unit tests for engines + integration tests for controller
 - [ ] No regressions: existing Player vs Player mode still works
 
 ---
