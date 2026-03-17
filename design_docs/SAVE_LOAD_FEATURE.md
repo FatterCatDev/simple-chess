@@ -4,7 +4,7 @@
 - Implemented in controller and GUI.
 - Persisted format: JSON wrapper containing SAN-lite move list.
 - Current automated coverage: save/load tests are passing.
-- Workspace-wide test status currently is `159 passed, 0 failed`.
+- Workspace-wide test status currently is `160 passed, 0 failed`.
 
 ## 1. Goal
 Add a Save button and Load action that use a full SAN-lite move list as the persisted game format.

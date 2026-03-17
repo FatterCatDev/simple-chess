@@ -17,7 +17,7 @@ A learning project for building a chess game in Python.
    - Player color selection for PvAI (White/Black)
 - Board orientation flips when PvAI player color is Black.
 - Previous-move highlighting is implemented (`from` and `to` squares).
-- Current automated test status: `159 passed, 0 failed`.
+- Current automated test status: `160 passed, 0 failed`.
 
 ## Project Structure
 
@@ -107,7 +107,7 @@ python -m unittest discover -s src/tests -t src
 ```
 
 Current result in this workspace:
-- `159 passed, 0 failed`
+- `160 passed, 0 failed`
 
 ## Release Notes (2026-03-15)
 
@@ -136,7 +136,7 @@ Current result in this workspace:
    - developed opening positions,
    - en passant windows,
    - castling available / castling rights removed scenarios.
-- Current automated suite result: `159 passed, 0 failed`.
+- Current automated suite result: `160 passed, 0 failed`.
 
 ### Running AI Stress Repro Script (Manual)
 

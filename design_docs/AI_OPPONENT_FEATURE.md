@@ -301,10 +301,11 @@ Goal: harden AI decision-making by removing repeated `make_move`/`undo_move` cal
 - AI search becomes pure simulation (`apply_move -> next_state`) instead of mutating and undoing live game state.
 
 #### AI Simulation Components
-- `AIState`: compact snapshot containing board occupancy, side to move, castling rights, en passant target, and halfmove clock.
-- `AIMove`: from-square, to-square, optional promotion, and metadata flags (capture/castle/en-passant).
+- `AIState`: immutable snapshot containing `pieces`, `current_turn`, `last_move`, `halfmove_clock`, draw/check flags, and serialized `position_history`.
+- `PieceState`: immutable piece record (`position`, `color`, `piece_type`, `has_moved`).
+- `LastMoveState`: immutable last-move record used for en passant and move context.
 - `generate_legal_moves(state)`: pure function for legal move generation from `AIState`.
-- `apply_move(state, move) -> AIState`: returns a derived state for search expansion.
+- `apply_move_on_state(state, from_square, to_square, promotion_choice="Q") -> AIState`: returns a derived state for search expansion.
 - `evaluate_state(state)`: static evaluation function used by heuristic search.
 
 #### Integration Boundary
@@ -388,14 +389,12 @@ Status bar at top shows:
 **Goal:** Move Hard heuristic search off live `Game` mutation and onto AI-only simulation state.
 
 - [x] Add `src/ai/sim_state.py`
-    - Define `AIState` (board snapshot, side-to-move, castling rights, en-passant, halfmove clock)
-    - Define `AIMove` (from, to, promotion, flags)
+    - Define immutable `AIState`, `PieceState`, and `LastMoveState`
 - [x] Add `src/ai/sim_adapter.py`
     - `game_to_ai_state(game) -> AIState`
-    - `ai_move_to_live_tuple(ai_move) -> (from_sq, to_sq, promotion_choice)`
 - [x] Add state legal-move and apply-move functions in `src/ai/sim_adapter.py`
     - `generate_legal_moves(state)`
-    - `apply_move(state, move) -> state`
+    - `apply_move_on_state(state, from_square, to_square, promotion_choice="Q") -> AIState`
     - Keep implementation minimal and focused on current built-in engine requirements
 - [x] Update `src/ai/simple_heuristic_ai.py`
     - Hard mode uses simulation path only
@@ -414,71 +413,63 @@ Status bar at top shows:
 - [ ] Hard AI completes long autoplay runs without crash in repro script
 - [x] Move quality remains at least equal to current Hard baseline on tactical tests
 
-#### Phase 1A API Contract (Exact Signatures)
-
-Use these signatures as the first implementation target.
+#### Phase 1A API Contract (Implemented)
 
 `src/ai/sim_state.py`
 ```python
 from dataclasses import dataclass
 from typing import Optional, Tuple
 
-Square = str  # e.g., "e4"
-PieceCode = str  # e.g., "WP", "BQ", "--"
+@dataclass(frozen=True)
+class PieceState:
+    position: str
+    color: str
+    piece_type: str
+    has_moved: bool
 
 @dataclass(frozen=True)
-class AIMove:
-    from_sq: Square
-    to_sq: Square
-    promotion: Optional[str] = None  # "Q", "R", "B", "N"
-    is_capture: bool = False
-    is_castle: bool = False
-    is_en_passant: bool = False
+class LastMoveState:
+    from_square: str
+    to_square: str
+    was_two_square_pawn_move: bool
 
 @dataclass(frozen=True)
 class AIState:
-    board: Tuple[Tuple[PieceCode, ...], ...]  # 8x8 immutable matrix
-    side_to_move: str  # "W" or "B"
-    castling_rights: str  # subset of "KQkq", or "-"
-    en_passant_target: Optional[Square]  # e.g., "e3", else None
+    pieces: Tuple[PieceState, ...]
+    current_turn: str
+    game_over: bool
+    is_draw: bool
+    draw_reason: Optional[str]
     halfmove_clock: int
-    fullmove_number: int
+    is_in_check: bool
+    last_move: Optional[LastMoveState]
+    position_history: Tuple[Tuple[Tuple[str, Optional[Tuple[str, str]]], ...], ...]
+    enable_fifty_move_rule: bool
 ```
 
 `src/ai/sim_adapter.py`
 ```python
-from ai.sim_state import AIState, AIMove
+from ai.sim_state import AIState
 
 def game_to_ai_state(game) -> AIState:
     """Convert live Game into immutable AIState snapshot."""
 
-def ai_move_to_live_tuple(move: AIMove) -> tuple[str, str, str]:
-    """Return (from_sq, to_sq, promotion_choice) for GameController/Game.make_move."""
-```
+def generate_legal_moves_on_state(state) -> list[tuple[str, str]]:
+    """Return all legal (from_square, to_square) moves for state.current_turn."""
 
-`src/ai/sim_rules.py`
-```python
-from ai.sim_state import AIState, AIMove
+def apply_move_on_state(state, from_square, to_square, promotion_choice="Q") -> AIState:
+    """Return next immutable AIState after the given move."""
 
-def generate_legal_moves(state: AIState) -> list[AIMove]:
-    """Return all legal moves for state.side_to_move."""
-
-def apply_move(state: AIState, move: AIMove) -> AIState:
-    """Return next immutable state after move."""
-
-def is_in_check(state: AIState, color: str) -> bool:
-    """True if color king is currently in check."""
-
-def is_terminal(state: AIState) -> tuple[bool, bool]:
-    """Return (game_over, is_draw)."""
+def is_in_check_state(state, color) -> bool:
+    """True if color king is currently in check in state."""
 ```
 
 `src/ai/simple_heuristic_ai.py` integration target
 ```python
 def _best_lookahead_move(self, game, moves):
     state = game_to_ai_state(game)
-    candidate_moves = generate_legal_moves(state)
-    # Evaluate using apply_move(state, move), never mutating live game.
+    candidate_moves = generate_legal_moves_on_state(state)
+    # Evaluate using apply_move_on_state(state, from_square, to_square), never mutating live game.
     # Return (from_sq, to_sq) compatible with existing controller path.
 ```
 
