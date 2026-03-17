@@ -61,6 +61,17 @@ Each engine is wrapped in a unified interface (see Section 5). At game setup, th
 - UCI binary path (for UCI engines; `None` for built-in engines)
 - (Optional) Opening book preference or other UCI options
 
+#### Difficulty Layout (Current Design)
+- `Random AI`: fixed at difficulty `1` (no slider range).
+- `Simple Heuristic AI`: slider range `1–2`.
+    - `1` = greedy mode
+    - `2` = lookahead mode
+- `Stockfish (UCI)`: slider range `1–10` (user-facing scale).
+    - Skill Level mapping contract: `1 -> 0`, `10 -> 20`.
+    - Skill Level formula: `round((difficulty - 1) * 20 / 9)` with difficulty clamped to `1..10`.
+    - Runtime precedence rule: if `move_time_ms` is not configured, engine uses fixed `go depth 12`.
+    - If `move_time_ms` is configured, engine uses `go movetime ...` and depth is not sent.
+
 ### 3.3 LLM Models (Cloud, User-Owned Access)
 
 LLM Opponent is treated as a separate model family from UCI engines.
@@ -138,16 +149,23 @@ class UCIEngine(AIEngine):
     
     def get_move(self, game: Game) -> tuple | None:
         """Send position to UCI engine; return a legal move tuple."""
-        # Translate difficulty (1-20) to UCI depth
-        depth = max(1, min(20, difficulty))
+        # If movetime is configured, use go movetime.
+        # Otherwise use a fixed fallback depth.
+        depth = 12
         # Spawn engine subprocess, send UCI commands, collect bestmove
         return (from_sq, to_sq)
 ```
 
-**Difficulty Mapping:**
-- Difficulty 1–3 → depth 1–3 (very fast; <1 sec)
-- Difficulty 4–10 → depth 4–10 (intermediate; 1–3 sec)
-- Difficulty 11–20 → depth 11–20 (strong; 3–10 sec)
+    **Difficulty Mapping (UI Layout):**
+    - Random: fixed 1
+    - Heuristic: 1–2
+    - Stockfish (UI): 1–10
+    - Stockfish search depth stays fixed at `12` when `move_time_ms` is not set (slider does not change depth)
+
+    **Stockfish Command Priority:**
+    0. Set engine skill using `setoption name Skill Level value <mapped_skill>` from UI difficulty `1..10`.
+    1. If `move_time_ms` is set, send `go movetime <ms>`.
+    2. Else send `go depth 12`.
 
 **Phase 1 MVP:** Instantiate for Stockfish only
 
@@ -157,7 +175,9 @@ class UCIEngine(AIEngine):
 - Instantiate as `UCIEngine("Stockfish", path_to_binary)`
 - Requires Stockfish binary pre-installed; path set in config or environment
 - Uses UCI protocol to communicate
-- Maps difficulty 1–20 to search depth
+- Uses UI difficulty scale 1–10 for setup/save metadata
+- Uses UI difficulty scale 1–10 mapped to Stockfish `Skill Level` 0–20
+- Uses fixed `go depth 12` when `move_time_ms` is not configured
 
 #### 5.2.3 Leela Chess Zero (Phase 3+)
 - Instantiate as `UCIEngine("Leela Chess Zero", path_to_lc0_binary)`
@@ -242,12 +262,15 @@ Add a new screen or dialog **before** the main game board:
    - If "Player vs AI":
      - Dropdown: White or Black (player color)
      - Dropdown: AI engine (Stockfish, Random, Simple Heuristic, etc.)
-     - Slider/spinner: Difficulty (1–20)
+         - Slider/spinner: Difficulty (engine-dependent range)
+             - Random: fixed at 1
+             - Heuristic: 1–2
+             - Stockfish: 1–10
    - If "AI vs AI":
      - Dropdown (Engine 1): Stockfish, Random, etc.
-     - Slider (Difficulty 1): 1–20
+         - Slider (Difficulty 1): engine-dependent range
      - Dropdown (Engine 2): Stockfish, Random, etc.
-     - Slider (Difficulty 2): 1–20
+         - Slider (Difficulty 2): engine-dependent range
    - If "Player vs Player":
      - Checkbox (optional): "Auto-play against CPU" (disables for now, reserved for future)
 3. Click "Start Game" → Initialize `GameController` with chosen engines and close dialog
@@ -513,7 +536,10 @@ Implementation rule for Phase 1A:
 - [x] Wire "New Game" and app startup to show Setup Dialog
 - [x] Wire Start → initialize `GameController` via centralized mode builder
 - [x] Add engine selection dropdown to Setup Dialog (Random + Simple Heuristic + Stockfish)
-- [ ] Add difficulty slider to Setup Dialog (1–20; maps to UCI depth)
+- [ ] Add engine-dependent difficulty slider to Setup Dialog
+    - Random fixed at 1
+    - Heuristic range 1–2
+    - Stockfish range 1–10
 - [x] Add auto-play loop for AI vs AI mode
 - [ ] Update status label to show "AI thinking..." during move computation
 - [x] Handle game-over during AI move (dialog triggers via refresh flow)
@@ -569,7 +595,8 @@ Implementation rule for Phase 1A:
 | Random engine raises on stalemate | Call Random with game_over=True; expect ValueError |
 | SimpleHeuristic prioritizes capture | Position with 2 legal moves (capture or quiet); assert capture chosen |
 | SimpleHeuristic handles checkmate move | Position where only move is checkmate; assert that move chosen |
-| Stockfish picks strong move (optional) | Play Stockfish at depth 5 vs starting position; assert e4 or d4 (standard openings) |
+| Stockfish skill mapping | Verify setup maps difficulty 1 to `Skill Level 0` and difficulty 10 to `Skill Level 20` |
+| Stockfish fallback depth policy | With `move_time_ms` unset, verify `go depth 12` command path is used |
 | LLM move is validated | Mock LLM response not in legal list; assert fallback strategy used |
 | LLM timeout fallback | Mock timeout; assert engine selects fallback legal move |
 
@@ -589,10 +616,10 @@ Implementation rule for Phase 1A:
 | Test | Steps | Expected |
 |---|---|---|
 | Setup Dialog opens | Click "New Game" | Dialog appears with game mode options |
-| Select "Player vs AI" | Radio button selection | AI engine dropdown and difficulty slider show |
+| Select "Player vs AI" | Radio button selection | AI engine dropdown and engine-dependent difficulty slider show |
 | Start game with AI | Choose engine, difficulty, click Start | Board appears; AI plays first move after user move |
 | Status updates | Play move as Player | Status shows "White's move" → "AI thinking..." → "Black's move" |
-| Save game with AI | Play a few moves | Save dialog; JSON contains `"engine": "Random"`, `"difficulty": 5` |
+| Save game with AI | Play a few moves | Save dialog; JSON contains selected `"engine"` and selected `"difficulty"` |
 
 ---
 
@@ -628,7 +655,8 @@ Implementation rule for Phase 1A:
 - [ ] Player can start an AI vs AI game
 - [ ] AI engine picks a legal move in every position
 - [ ] Easy AI (difficulty 1) vs Easy AI completes a full game
-- [ ] Hard AI (Stockfish depth 15+) makes reasonably strong moves
+- [ ] Stockfish difficulty mapping is correct (`1 -> Skill Level 0`, `10 -> Skill Level 20`)
+- [ ] Stockfish fallback depth behavior is correct (`go depth 12` when no movetime)
 - [ ] User can sign in with OpenAI or GitHub to enable LLM Opponent
 - [ ] LLM Opponent is disabled when user is not authenticated
 - [ ] LLM move selection always resolves to a legal move (direct or fallback)

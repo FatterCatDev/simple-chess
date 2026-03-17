@@ -163,7 +163,7 @@ class UCIEngine:
         if self.move_time_ms is not None and self.move_time_ms > 0:
             return f"go movetime {self.move_time_ms}"
         else:
-            return f"go depth {max(1, min(self.difficulty, 20))}"
+            return f"go depth 12"  # Default depth if no move time is specified to 12 for now.
 
     def _parse_bestmove(self, line):
         """Parse the best move from the UCI engine's output."""
