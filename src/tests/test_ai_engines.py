@@ -141,6 +141,17 @@ class TestSimpleHeuristicAI(unittest.TestCase):
         self.assertEqual(game.is_draw, pre_draw)
         self.assertEqual(game.is_in_check, pre_check)
 
+    def test_difficulty2_does_not_use_live_get_all_valid_moves(self):
+        game = Game()
+        ai = SimpleHeuristicAI(difficulty=2)
+
+        def fail_if_called(_color):
+            raise AssertionError("Hard AI should not call live get_all_valid_moves")
+
+        game.get_all_valid_moves = fail_if_called
+        move = ai.get_move(game)
+        self.assertIsNotNone(move)
+
     def test_difficulty2_survives_repeated_live_turns(self):
         game = Game()
         white_ai = SimpleHeuristicAI(difficulty=2)

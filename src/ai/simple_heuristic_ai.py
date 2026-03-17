@@ -59,15 +59,22 @@ class SimpleHeuristicAI(AIEngine):
         self._cache_set(self._in_check_cache, key, in_check)
         return in_check
 
-    def get_move(self, game):
-        all_moves = game.get_all_valid_moves(game.current_turn)
-        if not all_moves:
-            return None  # No valid moves available
+    def get_move(self, game): # Override the get_move method to select a move based on the difficulty level.
         if self.difficulty == 1:
+            all_moves = game.get_all_valid_moves(game.current_turn)
+            if not all_moves:
+                return None
             return self._best_greedy_move(game)
-        elif self.difficulty >= 2:
+    
+        if self.difficulty >= 2:
+            root_state = game_to_ai_state(game)
+            all_moves = generate_legal_moves_on_state(root_state)
+            if not all_moves:
+                return None
             return self._best_lookahead_move(game, all_moves)
-
+    
+        return None
+    
     def _evaluate_move(self, game, from_square, to_square):
         """Evaluate a move based on simple heuristics."""
         piece = game.board.get_piece_at(from_square)
