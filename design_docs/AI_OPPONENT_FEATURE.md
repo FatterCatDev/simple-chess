@@ -1,5 +1,7 @@
 # AI Opponent Feature — Design Document
 
+Last verified: 2026-03-16
+
 ## 1. Overview
 
 This feature adds AI-powered opponents to Simple Chess. The current implementation supports built-in engines and Stockfish through a UCI wrapper, with setup available at startup/new-game.

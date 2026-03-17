@@ -1,5 +1,7 @@
 # Save and Load Feature Spec (SAN-lite)
 
+Last verified: 2026-03-16
+
 ## Status
 - Implemented in controller and GUI.
 - Persisted format: JSON wrapper containing SAN-lite move list.

@@ -1,5 +1,7 @@
 # Simple Chess Code Flowchart (Modules, Classes, Functions)
 
+Last verified: 2026-03-16
+
 This chart focuses on runtime execution paths (app startup, move handling, AI turns, simulation engine, save/load/replay).
 
 ## 1) Module + Class Overview

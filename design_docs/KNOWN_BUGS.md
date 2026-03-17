@@ -1,5 +1,7 @@
 # Simple Chess — Known Bugs
 
+Last verified: 2026-03-16
+
 This file tracks currently open issues and recently fixed bugs.
 
 ---

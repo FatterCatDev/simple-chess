@@ -1,5 +1,7 @@
 # Game Over Dialog — Feature Design Document
 
+Last verified: 2026-03-16
+
 ## 1. Overview
 
 When a game ends by checkmate, stalemate, or a draw rule, the app shows a modal dialog automatically so the result is clearly visible.

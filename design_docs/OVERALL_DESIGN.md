@@ -1,5 +1,7 @@
 # Simple Chess — Overall Design (Current State)
 
+Last verified: 2026-03-16
+
 ## 1. Project Overview
 
 ### 1.1 Purpose
