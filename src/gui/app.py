@@ -1,6 +1,6 @@
 import os
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
+from tkinter import IntVar, ttk, filedialog, messagebox
 import ctypes
 from ctypes import wintypes
 import sys
@@ -643,12 +643,16 @@ def run_app():
         mode_dialog.grab_set()
         mode_dialog.protocol("WM_DELETE_WINDOW", mode_dialog.destroy)
 
-        selected_engine = tk.StringVar(value=ENGINE_OPTIONS[0][0])  # Default to the first engine option
+        selected_engine = tk.StringVar(value="Random AI")  # Default to the first engine option
+
 
         # AI vs AI engine selection frame
-        selected_white_engine = tk.StringVar(value=ENGINE_OPTIONS[0][0])  # Default to the first engine option for white
-        selected_black_engine = tk.StringVar(value=ENGINE_OPTIONS[0][0])  # Default to the first engine option for black
+
+        selected_white_engine = tk.StringVar(value="Random AI")  # Default to the first engine option for white
+        selected_black_engine = tk.StringVar(value="Random AI")  # Default to the first engine option for black
         aivai_engine_frame = tk.Frame(mode_dialog, bg=GLOBAL_BUTTON_STYLE["primary"])
+
+
         tk.Label(
             aivai_engine_frame,
             text="Select AI Engine for White:",
@@ -659,10 +663,41 @@ def run_app():
         white_engine_options = tk.OptionMenu(
             aivai_engine_frame,
             selected_white_engine,
-            *[label for label, _ in ENGINE_OPTIONS]
+            *list(ENGINE_OPTIONS.keys())
         )
         white_engine_options.pack(pady=(0, 12), padx=20)
         white_engine_options.config(bg=GLOBAL_BUTTON_STYLE["primary"], fg="#FFF", highlightthickness=0, relief="flat")
+
+        # Difficulty slider for white engine in AI vs AI mode
+        white_difficulty = tk.IntVar(value=1)  # Default difficulty level for white engine
+        white_engine_difficulty_slider = tk.Scale(
+            aivai_engine_frame,
+            from_=1,
+            to=10,
+            orient="horizontal",
+            variable=white_difficulty,  # Default difficulty level for white engine
+            label="AI Difficulty",
+            bg=GLOBAL_BUTTON_STYLE["primary"],
+            fg="#FFF",
+            highlightthickness=0,
+            troughcolor=GLOBAL_BUTTON_STYLE["tertiary"],
+            sliderlength=20,
+        )
+        white_engine_difficulty_slider.pack(pady=(0, 12), padx=20)
+
+        # Update difficulty slider range dynamically based on selected white engine
+        def update_white_difficulty_slider(*_):
+            engine_name = selected_white_engine.get()
+            engine_meta = ENGINE_OPTIONS.get(engine_name, ENGINE_OPTIONS["Random AI"])
+            min_diff = engine_meta["min"]
+            max_diff = engine_meta["max"]
+            white_engine_difficulty_slider.config(from_=min_diff, to=max_diff)
+            current_val = white_difficulty.get()
+            if current_val < min_diff or current_val > max_diff:
+                white_difficulty.set(engine_meta["default"])
+        selected_white_engine.trace_add("write", update_white_difficulty_slider)
+        update_white_difficulty_slider()  # Initial call to set the slider range based on default engine
+
         tk.Label(
             aivai_engine_frame,
             text="Select AI Engine for Black:",
@@ -673,13 +708,44 @@ def run_app():
         black_engine_options = tk.OptionMenu(
             aivai_engine_frame,
             selected_black_engine,
-            *[label for label, _ in ENGINE_OPTIONS]
+            *list(ENGINE_OPTIONS.keys())
         )
         black_engine_options.pack(pady=(0, 12), padx=20)
         black_engine_options.config(bg=GLOBAL_BUTTON_STYLE["primary"], fg="#FFF", highlightthickness=0, relief="flat")
 
+        # Difficulty slider for black engine in AI vs AI mode
+        black_difficulty = tk.IntVar(value=1)  # Default difficulty level for black engine
+        black_engine_difficulty_slider = tk.Scale(
+            aivai_engine_frame,
+            from_=1,
+            to=10,
+            orient="horizontal",
+            variable=black_difficulty,  # Default difficulty level for black engine
+            label="AI Difficulty",
+            bg=GLOBAL_BUTTON_STYLE["primary"],
+            fg="#FFF",
+            highlightthickness=0,
+            troughcolor=GLOBAL_BUTTON_STYLE["tertiary"],
+            sliderlength=20,
+        )
+        black_engine_difficulty_slider.pack(pady=(0, 12), padx=20)
+    
+        # Update difficulty slider range dynamically based on selected black engine
+        def update_black_difficulty_slider(*_):
+            engine_name = selected_black_engine.get()
+            engine_meta = ENGINE_OPTIONS.get(engine_name, ENGINE_OPTIONS["Random AI"])
+            min_diff = engine_meta["min"]
+            max_diff = engine_meta["max"]
+            black_engine_difficulty_slider.config(from_=min_diff, to=max_diff)
+            current_val = black_difficulty.get()
+            if current_val < min_diff or current_val > max_diff:
+                black_difficulty.set(engine_meta["default"])
+        selected_black_engine.trace_add("write", update_black_difficulty_slider)
+        update_black_difficulty_slider()  # Initial call to set the slider range based on default engine
+
         # AI engine selection frame for Player vs AI mode
         engine_frame = tk.Frame(mode_dialog, bg=GLOBAL_BUTTON_STYLE["primary"])
+
         tk.Label(
             engine_frame,
             text="Select AI Engine:",
@@ -690,10 +756,39 @@ def run_app():
         engine_options = tk.OptionMenu(
             engine_frame,
             selected_engine,
-            *[label for label, _ in ENGINE_OPTIONS]
+            *list(ENGINE_OPTIONS.keys())
         )
         engine_options.pack(pady=(0, 12), padx=20)
         engine_options.config(bg=GLOBAL_BUTTON_STYLE["primary"], fg="#FFF", highlightthickness=0, relief="flat")
+
+        # Difficulty slider for Player vs AI mode
+        pvai_difficulty = tk.IntVar(value=1)  # Default difficulty level for PvAI mode
+        difficulty_slider = tk.Scale(
+            engine_frame,
+            from_=1,
+            to=2,
+            orient="horizontal",
+            variable=pvai_difficulty,  # Default difficulty level for PvAI mode
+            label="AI Difficulty",
+            bg=GLOBAL_BUTTON_STYLE["primary"],
+            fg="#FFF",
+            highlightthickness=0,
+            troughcolor=GLOBAL_BUTTON_STYLE["tertiary"],
+            sliderlength=20,
+        )
+        difficulty_slider.pack(pady=(0, 12), padx=20)
+        # Update difficulty slider range dynamically based on selected engine
+        def update_pvai_difficulty_slider(*_):
+            engine_name = selected_engine.get()
+            engine_meta = ENGINE_OPTIONS.get(engine_name, ENGINE_OPTIONS["Random AI"])
+            min_diff = engine_meta["min"]
+            max_diff = engine_meta["max"]
+            difficulty_slider.config(from_=min_diff, to=max_diff)
+            current_val = pvai_difficulty.get()
+            if current_val < min_diff or current_val > max_diff:
+                pvai_difficulty.set(engine_meta["default"])
+        selected_engine.trace_add("write", update_pvai_difficulty_slider)
+        update_pvai_difficulty_slider()  # Initial call to set the slider range based on default engine
 
         selected_player_color = tk.StringVar(value="W")  # Default to White for PvAI mode
         color_frame = tk.Frame(mode_dialog, bg=GLOBAL_BUTTON_STYLE["primary"])
@@ -795,7 +890,10 @@ def run_app():
             selected_engine.get(), 
             selected_player_color.get(), 
             selected_white_engine.get(), 
-            selected_black_engine.get()
+            selected_black_engine.get(),
+            white_difficulty.get(),
+            black_difficulty.get(),
+            pvai_difficulty.get()
             ) if action["confirmed"] else None
 
     def auto_play_start():
@@ -1094,7 +1192,7 @@ def run_app():
         chosen_option = show_mode_dialog()
         if chosen_option is None:
             return  # User cancelled the mode selection dialog
-        chosen_mode, chosen_engine, chosen_color, chosen_white_engine, chosen_black_engine = chosen_option
+        chosen_mode, chosen_engine, chosen_color, chosen_white_engine, chosen_black_engine, chosen_white_difficulty, chosen_black_difficulty, chosen_pvai_difficulty = chosen_option
         if not chosen_mode:
             return  # User cancelled the mode selection dialog
         current_mode = chosen_mode
@@ -1119,7 +1217,10 @@ def run_app():
             player_color=chosen_color,
             chosen_engine=chosen_engine,
             chosen_white_engine=chosen_white_engine,
-            chosen_black_engine=chosen_black_engine
+            chosen_black_engine=chosen_black_engine,
+            chosen_white_difficulty=chosen_white_difficulty,
+            chosen_black_difficulty=chosen_black_difficulty,
+            chosen_pvai_difficulty=chosen_pvai_difficulty
         )
         build_board(board_flipped=board_flipped)
         refresh_board()
@@ -1185,7 +1286,7 @@ def run_app():
 
     result = show_mode_dialog()
     if result:
-        chosen_mode, chosen_engine, chosen_color, chosen_white_engine, chosen_black_engine = result
+        chosen_mode, chosen_engine, chosen_color, chosen_white_engine, chosen_black_engine, chosen_white_difficulty, chosen_black_difficulty, chosen_pvai_difficulty = result
         if chosen_mode:
             current_mode = chosen_mode
             board_flipped = (chosen_mode == "pvai" and chosen_color == "B")
@@ -1208,7 +1309,10 @@ def run_app():
                 player_color=chosen_color,
                 chosen_engine=chosen_engine,
                 chosen_white_engine=chosen_white_engine,
-                chosen_black_engine=chosen_black_engine
+                chosen_black_engine=chosen_black_engine,
+                chosen_white_difficulty=chosen_white_difficulty,
+                chosen_black_difficulty=chosen_black_difficulty,
+                chosen_pvai_difficulty=chosen_pvai_difficulty
             )
 
     build_board(board_flipped=board_flipped)

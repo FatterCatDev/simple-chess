@@ -5,12 +5,11 @@ from ai.uci_engine import UCIEngine
 from pathlib import Path
 import sys
 
-ENGINE_OPTIONS = [
-    ("Random AI", lambda: RandomAI()),
-    ("Simple Heuristic AI (Easy)", lambda: SimpleHeuristicAI(difficulty=1)),
-    ("Simple Heuristic AI (Hard)", lambda: SimpleHeuristicAI(difficulty=2)),
-    ("Stockfish (UCI)", lambda: stockfish_factory(difficulty=1)) # Placeholder path; replace with actual path to Stockfish binary
-]
+ENGINE_OPTIONS = {
+    "Random AI": {"min": 1, "max": 1, "default": 1, "factory": lambda difficulty=1: RandomAI()},
+    "Simple Heuristic AI": {"min": 1, "max": 2, "default": 1, "factory": lambda difficulty=1: simple_heuristic_ai_factory(difficulty)},
+    "Stockfish": {"min": 1, "max": 10, "default": 1, "factory": lambda difficulty=1: stockfish_factory(difficulty)},
+}
 
 def find_app_base_path():
     """Determine the base path of the application, whether running as a script or a frozen executable."""
@@ -64,6 +63,9 @@ def resolve_stockfish_binary_path():
         return secondary_path[0], None
     return primary_path[0], secondary_path[0] if secondary_path else None
 
+def simple_heuristic_ai_factory(difficulty=1):
+    return SimpleHeuristicAI(difficulty=difficulty)
+
 def stockfish_factory(difficulty=1):
     binary_path, secondary_path = resolve_stockfish_binary_path()
     if binary_path is None:
@@ -86,17 +88,22 @@ def build_controller_for_mode(
     chosen_engine=None,
     chosen_white_engine=None,
     chosen_black_engine=None,
+    chosen_white_difficulty=None,
+    chosen_black_difficulty=None,
+    chosen_pvai_difficulty=None,
 ):
-    engine_lookup = dict(ENGINE_OPTIONS)
 
     if mode_key == "aivai":
-        engine_factory_white = engine_lookup.get(chosen_white_engine) if chosen_white_engine else None
-        engine_factory_black = engine_lookup.get(chosen_black_engine) if chosen_black_engine else None
-        ai_white = engine_factory_white() if engine_factory_white else RandomAI()
-        ai_black = engine_factory_black() if engine_factory_black else RandomAI()
+        white_engine = ENGINE_OPTIONS.get(chosen_white_engine, ENGINE_OPTIONS["Random AI"]) if chosen_white_engine else ENGINE_OPTIONS["Random AI"]
+        black_engine = ENGINE_OPTIONS.get(chosen_black_engine, ENGINE_OPTIONS["Random AI"]) if chosen_black_engine else ENGINE_OPTIONS["Random AI"]
+        white_diff = chosen_white_difficulty if chosen_white_difficulty is not None else white_engine["default"]
+        black_diff = chosen_black_difficulty if chosen_black_difficulty is not None else black_engine["default"]
+        ai_white = white_engine["factory"](white_diff) if white_engine else RandomAI()
+        ai_black = black_engine["factory"](black_diff) if black_engine else RandomAI()
     elif mode_key == "pvai":
-        engine_factory = engine_lookup.get(chosen_engine) if chosen_engine else None
-        ai_engine = engine_factory() if engine_factory else None
+        engine = ENGINE_OPTIONS.get(chosen_engine, ENGINE_OPTIONS["Random AI"]) if chosen_engine else ENGINE_OPTIONS["Random AI"]
+        pvai_diff = chosen_pvai_difficulty if chosen_pvai_difficulty is not None else engine["default"]
+        ai_engine = engine["factory"](pvai_diff) if engine else RandomAI()
         ai_white = ai_engine if player_color == "B" else None
         ai_black = ai_engine if player_color == "W" else None
     else:

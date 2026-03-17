@@ -3,6 +3,7 @@ from game.game import Game
 from game.piece import King, Queen, Rook, Knight, Bishop, Pawn
 from utils.constants import COLOR
 from ai.simple_heuristic_ai import SimpleHeuristicAI
+from ai.uci_engine import UCIEngine
 from ai.sim_adapter import ai_state_to_game, game_to_ai_state, generate_legal_moves_on_state
 
 
@@ -252,6 +253,55 @@ class TestSimpleHeuristicAI(unittest.TestCase):
         self._assert_state_move_parity(game)
         self.assertNotIn(("e1", "g1"), game.get_all_valid_moves(game.current_turn))
         self.assertNotIn(("e1", "c1"), game.get_all_valid_moves(game.current_turn))
+
+
+class TestUCIEngine(unittest.TestCase):
+
+    def test_stockfish_skill_mapping_endpoints(self):
+        low = UCIEngine("Stockfish", binary_path="dummy", difficulty=1)
+        high = UCIEngine("Stockfish", binary_path="dummy", difficulty=10)
+
+        self.assertEqual(low._stockfish_skill_level(), 0)
+        self.assertEqual(high._stockfish_skill_level(), 20)
+
+    def test_stockfish_skill_mapping_clamps_values(self):
+        too_low = UCIEngine("Stockfish", binary_path="dummy", difficulty=0)
+        too_high = UCIEngine("Stockfish", binary_path="dummy", difficulty=999)
+
+        self.assertEqual(too_low._stockfish_skill_level(), 0)
+        self.assertEqual(too_high._stockfish_skill_level(), 20)
+
+    def test_stockfish_skill_mapping_handles_invalid_value(self):
+        engine = UCIEngine("Stockfish", binary_path="dummy", difficulty="abc")
+        self.assertEqual(engine._stockfish_skill_level(), 0)
+
+    def test_apply_engine_options_sends_skill_level_for_stockfish(self):
+        engine = UCIEngine("Stockfish", binary_path="dummy", difficulty=5)
+        commands = []
+
+        engine._send_command = commands.append
+        engine._read_until = lambda token, timeout: "readyok"
+
+        engine._apply_engine_options()
+
+        self.assertEqual(
+            commands,
+            [
+                "setoption name Skill Level value 9",
+                "isready",
+            ],
+        )
+
+    def test_apply_engine_options_skips_non_stockfish(self):
+        engine = UCIEngine("SomeEngine", binary_path="dummy", difficulty=5)
+        commands = []
+
+        engine._send_command = commands.append
+        engine._read_until = lambda token, timeout: "readyok"
+
+        engine._apply_engine_options()
+
+        self.assertEqual(commands, [])
 
 
 if __name__ == "__main__":

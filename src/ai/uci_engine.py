@@ -165,6 +165,24 @@ class UCIEngine:
         else:
             return f"go depth 12"  # Default depth if no move time is specified to 12 for now.
 
+    def _stockfish_skill_level(self):
+        """Map UI difficulty 1..10 to Stockfish Skill Level 0..20."""
+        try:
+            difficulty = int(self.difficulty)
+        except (TypeError, ValueError):
+            difficulty = 1
+
+        difficulty = max(1, min(10, difficulty))
+        return round((difficulty - 1) * 20 / 9)
+
+    def _apply_engine_options(self, timeout=5):
+        """Apply runtime options for engines that support them."""
+        if self.engine_name.lower() == "stockfish":
+            skill_level = self._stockfish_skill_level()
+            self._send_command(f"setoption name Skill Level value {skill_level}")
+            self._send_command("isready")
+            self._read_until("readyok", timeout)
+
     def _parse_bestmove(self, line):
         """Parse the best move from the UCI engine's output."""
         if not line.startswith("bestmove"):
@@ -190,6 +208,7 @@ class UCIEngine:
             return None  # No moves available if the game is over
         try:
             self._init_uci()
+            self._apply_engine_options()
             position_command = self._build_position_command(game)
             self._send_command(position_command)
             go_args = self.difficulty_to_go_args()
